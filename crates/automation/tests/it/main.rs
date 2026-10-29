@@ -3,9 +3,9 @@
 mod attachment_key;
 mod automation;
 mod automation_roots;
-mod craftstudio;
 mod batch;
 mod button_caption;
+mod craftstudio;
 mod form_bulk;
 mod hostile_args;
 mod optimize_content_boundaries;

@@ -78,7 +78,11 @@ impl Settings {
     /// Settings with the given key and the default model and endpoint; `None` for a blank key.
     pub fn with_key(api_key: &str) -> Option<Settings> {
         let api_key = api_key.trim();
-        (!api_key.is_empty()).then(|| Settings { api_key: api_key.to_string(), model: DEFAULT_MODEL.to_string(), endpoint: DEFAULT_ENDPOINT.to_string() })
+        (!api_key.is_empty()).then(|| Settings {
+            api_key: api_key.to_string(),
+            model: DEFAULT_MODEL.to_string(),
+            endpoint: DEFAULT_ENDPOINT.to_string(),
+        })
     }
 
     /// Settings from [`ENV_KEY`], [`ENV_MODEL`] and [`ENV_ENDPOINT`]; `None` without a key.
@@ -185,7 +189,9 @@ pub fn build_request(settings: &Settings, pages: &[PageText], task: &Task) -> Re
         Task::Summarize { language } => {
             let lang = language.as_deref().map(str::trim).filter(|l| !l.is_empty());
             let lang = lang.map_or_else(|| "Write it in the document's own language.".to_string(), |l| format!("Write it in {l}."));
-            format!("Summarize this document: first one or two sentences on what it is, then its key points, figures, dates, parties and any actions or deadlines, as a short list. {lang}")
+            format!(
+                "Summarize this document: first one or two sentences on what it is, then its key points, figures, dates, parties and any actions or deadlines, as a short list. {lang}"
+            )
         }
         Task::Ask { question } => {
             let q = question.trim();

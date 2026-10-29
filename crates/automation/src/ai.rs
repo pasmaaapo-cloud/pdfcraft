@@ -2,8 +2,8 @@
 //!
 //! Opt-in: without settings (an API key) every call fails before anything is sent.
 
-use super::{Automation, Result, ToolError, Value, failed, json};
 use super::json::Args;
+use super::{Automation, Result, ToolError, Value, failed, json};
 
 impl Automation {
     fn ai(&self) -> Option<pdfcraft_ai::Settings> {

@@ -225,9 +225,7 @@ fn run(cmd: &mut Command, stdout: Option<&Path>, limit: Duration) -> Result<(), 
         match child.try_wait() {
             Ok(Some(status)) if status.success() => return Ok(()),
             Ok(Some(status)) => {
-                return Err(OcrError::Recognize(format!(
-                    "Tesseract stopped with {status}; check that the chosen languages are installed"
-                )));
+                return Err(OcrError::Recognize(format!("Tesseract stopped with {status}; check that the chosen languages are installed")));
             }
             Ok(None) if Instant::now() >= deadline => {
                 let _ = child.kill();

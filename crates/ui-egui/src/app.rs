@@ -164,6 +164,7 @@ impl PdfCraftApp {
             office_job: None,
             ai_key: String::new(),
             ai_model: String::new(),
+            ai_endpoint: None,
             js_console: Default::default(),
             doc_js: Default::default(),
             a11y: a11y_ui::A11yState::default(),

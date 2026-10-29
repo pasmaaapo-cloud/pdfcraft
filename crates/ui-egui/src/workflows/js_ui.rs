@@ -561,9 +561,10 @@ fn ai_assistant(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) {
     });
     ui.horizontal(|ui| {
         let label = ui.label(tl!("Model"));
-        ui.add(crate::widgets::line(&mut app.ai_model).hint_text(pdfcraft_ai::DEFAULT_MODEL).desired_width(200.0).char_limit(64)).labelled_by(label.id);
+        ui.add(crate::widgets::line(&mut app.ai_model).hint_text(pdfcraft_ai::DEFAULT_MODEL).desired_width(200.0).char_limit(64))
+            .labelled_by(label.id);
     });
-    let status = if crate::ai_ui::settings(&app.ai_key, &app.ai_model).is_some() {
+    let status = if crate::ai_ui::settings(&app.ai_key, &app.ai_model, app.ai_endpoint.as_deref()).is_some() {
         tl!("On: the document's text is sent to Anthropic only when you ask the AI Assistant.")
     } else {
         tl!("Off. Without a key nothing is sent anywhere.")

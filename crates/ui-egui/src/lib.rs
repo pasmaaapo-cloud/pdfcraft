@@ -153,8 +153,8 @@ use tools::tags_ui;
 use widgets::icon_data;
 pub use widgets::icons;
 use workflows::a11y_ui;
-use workflows::ai_ui;
 use workflows::actions_ui;
+use workflows::ai_ui;
 use workflows::combine_grid;
 use workflows::combine_ui;
 use workflows::compare_ui;
@@ -475,6 +475,8 @@ pub struct PdfCraftApp {
     /// and the model (empty: the default). Stored with the other preferences, in plain text.
     pub ai_key: String,
     pub ai_model: String,
+    /// Another Messages API endpoint for the AI Assistant (a local test server); not saved.
+    pub ai_endpoint: Option<String>,
     /// The JavaScript console and the Document JavaScripts draft.
     pub js_console: js_ui::JsConsole,
     pub doc_js: js_ui::DocJsDraft,

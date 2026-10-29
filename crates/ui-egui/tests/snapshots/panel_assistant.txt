@@ -1,0 +1,5 @@
+Label = "AI Assistant"
+Button "Close" [off]
+Label = "Summarize this document or ask it questions with Claude. Answers cite the pages they come from."
+Label = "Add your Anthropic API key first. The document's text is sent to Anthropic only when you ask."
+Button "Set up the AI Assistant…"

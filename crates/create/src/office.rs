@@ -53,7 +53,10 @@ fn office_candidates() -> Vec<PathBuf> {
     } else if cfg!(target_os = "macos") {
         out.push(PathBuf::from("/Applications/LibreOffice.app/Contents/MacOS/soffice"));
     } else {
-        out.extend(["/usr/bin/soffice", "/usr/lib/libreoffice/program/soffice", "/opt/libreoffice/program/soffice", "/snap/bin/libreoffice"].map(PathBuf::from));
+        out.extend(
+            ["/usr/bin/soffice", "/usr/lib/libreoffice/program/soffice", "/opt/libreoffice/program/soffice", "/snap/bin/libreoffice"]
+                .map(PathBuf::from),
+        );
     }
     out
 }
@@ -119,9 +122,7 @@ pub fn office_to_pdf(soffice: &Path, input: &Path, limit: Duration) -> Result<Ve
     };
     let pdf = out_dir.join("source.pdf");
     let len = std::fs::metadata(&pdf).map(|m| m.len()).map_err(|_| {
-        invalid(format!(
-            "LibreOffice made no PDF ({status}); the file may be damaged, password-protected or of a kind it cannot read"
-        ))
+        invalid(format!("LibreOffice made no PDF ({status}); the file may be damaged, password-protected or of a kind it cannot read"))
     })?;
     if len > MAX_OUTPUT {
         return Err(invalid(format!("the converted PDF is larger than {} MB", MAX_OUTPUT / (1024 * 1024))));
@@ -191,7 +192,8 @@ mod tests {
         };
         let dir = tempfile::tempdir().unwrap();
         let rtf = dir.path().join("Lasku (1) ä.rtf");
-        std::fs::write(&rtf, br"{\rtf1\ansi\deff0{\fonttbl{\f0 Helvetica;}}\f0\fs24 Lasku 42: P\u228?iv\u228?m\u228?\u228?r\u228? 1.12.2026\par}").unwrap();
+        std::fs::write(&rtf, br"{\rtf1\ansi\deff0{\fonttbl{\f0 Helvetica;}}\f0\fs24 Lasku 42: P\u228?iv\u228?m\u228?\u228?r\u228? 1.12.2026\par}")
+            .unwrap();
         let pdf = office_to_pdf(&soffice, &rtf, CONVERT_LIMIT).unwrap();
         assert!(pdf.starts_with(b"%PDF-"));
         let doc = pdfcraft_cos::Document::open(std::sync::Arc::new(pdf)).unwrap();

@@ -104,7 +104,8 @@ fn tesseract() -> Option<pdfcraft_ocr::tesseract::Tesseract> {
 }
 
 /// What a missing Tesseract or language is told as. The UI catalogs key these exact texts.
-pub const NEED_TESSERACT: &str = "this language is read by Tesseract OCR, which is not installed (install it, or set PDFCRAFT_TESSERACT to tesseract's path)";
+pub const NEED_TESSERACT: &str =
+    "this language is read by Tesseract OCR, which is not installed (install it, or set PDFCRAFT_TESSERACT to tesseract's path)";
 pub const NEED_LANGUAGE_DATA: &str = "Tesseract OCR is installed but has no data for this language (add it to Tesseract's tessdata folder)";
 
 /// The recogniser for `settings.language`: the bundled models for English when they are

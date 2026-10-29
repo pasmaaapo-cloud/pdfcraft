@@ -5,7 +5,8 @@ use super::{
 };
 
 /// What a missing LibreOffice is told as. The UI catalogs key this exact text.
-pub const OFFICE_MISSING: &str = "converting Office files needs LibreOffice, which is not installed (install it, or set PDFCRAFT_SOFFICE to soffice's path)";
+pub const OFFICE_MISSING: &str =
+    "converting Office files needs LibreOffice, which is not installed (install it, or set PDFCRAFT_SOFFICE to soffice's path)";
 
 impl Session {
     /// The page count of another PDF (Replace Pages, Insert Pages dialogs).

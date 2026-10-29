@@ -48,10 +48,7 @@ impl Automation {
             "office" => {
                 let path = a.str("path")?;
                 if !pdfcraft_engine::office::is_office_file(Path::new(path)) {
-                    return Err(ToolError::InvalidArgs(format!(
-                        "office needs a {} file",
-                        pdfcraft_engine::office::OFFICE_EXTENSIONS.join(", ")
-                    )));
+                    return Err(ToolError::InvalidArgs(format!("office needs a {} file", pdfcraft_engine::office::OFFICE_EXTENSIONS.join(", "))));
                 }
                 let path = self.resolve(path, false)?;
                 let stem = path.file_stem().map_or_else(|| "Document".to_string(), |s| s.to_string_lossy().into_owned());

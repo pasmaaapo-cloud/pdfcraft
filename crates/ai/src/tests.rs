@@ -9,11 +9,14 @@ fn pages(texts: &[&str]) -> Vec<PageText> {
     texts.iter().enumerate().map(|(i, t)| PageText { page: i as u32 + 1, text: (*t).to_string() }).collect()
 }
 
+/// A request as the fake transport saw it: URL, headers and JSON body.
+type Seen = (String, Vec<(String, String)>, Value);
+
 /// A transport that records the request and returns a canned response.
 struct Fake {
     status: u16,
     body: String,
-    seen: RefCell<Option<(String, Vec<(String, String)>, Value)>>,
+    seen: RefCell<Option<Seen>>,
 }
 
 impl Fake {
@@ -59,7 +62,8 @@ fn endpoints_must_be_https_or_this_computer() {
 #[test]
 fn the_request_carries_numbered_pages_and_the_task() {
     let (body, sent, truncated) =
-        build_request(&settings(), &pages(&["Lasku 123", "", "Eräpäivä 1.12.2026 <tärkeä>"]), &Task::Ask { question: "Milloin eräpäivä?".into() }).unwrap();
+        build_request(&settings(), &pages(&["Lasku 123", "", "Eräpäivä 1.12.2026 <tärkeä>"]), &Task::Ask { question: "Milloin eräpäivä?".into() })
+            .unwrap();
     assert_eq!((sent, truncated), (vec![1, 3], false), "blank pages are not sent");
     assert_eq!(body["model"], DEFAULT_MODEL);
     assert_eq!(body["max_tokens"], MAX_OUTPUT_TOKENS);
@@ -103,7 +107,9 @@ fn responses_are_read_and_errors_are_named() {
         parse_response(400, r#"{"error":{"type":"invalid_request_error","message":"model not found"}}"#).unwrap_err(),
         AiError::Refused { status: 400, message: "model not found".into() }
     );
-    assert!(matches!(parse_response(500, "<html>oops</html>").unwrap_err(), AiError::Refused { status: 500, message } if message == "<html>oops</html>"));
+    assert!(
+        matches!(parse_response(500, "<html>oops</html>").unwrap_err(), AiError::Refused { status: 500, message } if message == "<html>oops</html>")
+    );
     assert!(matches!(parse_response(200, "not json"), Err(AiError::BadResponse(_))));
     assert!(matches!(parse_response(200, r#"{"content":[]}"#), Err(AiError::BadResponse(_))));
 }

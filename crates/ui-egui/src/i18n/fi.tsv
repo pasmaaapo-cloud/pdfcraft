@@ -2875,3 +2875,5 @@ theme	Appearance	Teema
 	the API key was refused (check it in Preferences ▸ AI Assistant)	API-avain hylättiin (tarkista se kohdassa Asetukset ▸ Tekoälyavustaja)
 	the service is busy or the usage limit was reached; try again in a moment	palvelu on ruuhkainen tai käyttöraja täyttyi; yritä hetken päästä uudelleen
 @id	create.office	Luo PDF Office-tiedostosta…
+	Question	Kysymys
+	p. {n}	s. {n}

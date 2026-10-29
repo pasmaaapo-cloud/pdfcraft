@@ -52,7 +52,11 @@ fn mock_messages_api(status: u16, body: Value) -> (String, mpsc::Receiver<(Strin
         let _ = tx.send((head, serde_json::from_slice(&buf).unwrap()));
         let body = body.to_string();
         let mut stream = stream;
-        let _ = write!(stream, "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+        let _ = write!(
+            stream,
+            "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
     });
     (url, rx)
 }
@@ -62,14 +66,14 @@ fn settings(endpoint: &str) -> pdfcraft_ai::Settings {
 }
 
 fn invoice(a: &mut Automation) -> u64 {
-    let doc = ok(a, "doc_create", json!({ "from": "text", "text": "Lasku 42\nSumma 120 euroa\n\u{c}Eräpäivä 1.12.2026" }))["doc"].as_u64().unwrap();
-    doc
+    ok(a, "doc_create", json!({ "from": "text", "text": "Lasku 42\nSumma 120 euroa\n\u{c}Eräpäivä 1.12.2026" }))["doc"].as_u64().unwrap()
 }
 
 #[test]
 fn ai_ask_sends_the_pages_and_returns_cited_pages() {
     let dir = workdir("ai-ask");
-    let answer = json!({ "content": [{ "type": "text", "text": "Eräpäivä on 1.12.2026 [s. 2]." }], "usage": { "input_tokens": 50, "output_tokens": 12 } });
+    let answer =
+        json!({ "content": [{ "type": "text", "text": "Eräpäivä on 1.12.2026 [s. 2]." }], "usage": { "input_tokens": 50, "output_tokens": 12 } });
     let (url, seen) = mock_messages_api(200, answer);
     let mut a = Automation::new().with_root(&dir).unwrap().with_ai_settings(settings(&url));
     let doc = invoice(&mut a);
@@ -81,7 +85,10 @@ fn ai_ask_sends_the_pages_and_returns_cited_pages() {
     assert!(head.starts_with("POST /v1/messages "), "{head}");
     assert!(head.to_ascii_lowercase().contains("x-api-key: sk-test-key"), "{head}");
     let content = body["messages"][0]["content"].as_str().unwrap();
-    assert!(content.contains("<page number=\"2\">") && content.contains("Eräpäivä 1.12.2026") && content.contains("Milloin eräpäivä on?"), "{content}");
+    assert!(
+        content.contains("<page number=\"2\">") && content.contains("Eräpäivä 1.12.2026") && content.contains("Milloin eräpäivä on?"),
+        "{content}"
+    );
     assert!(!ok(&mut a, "ai_status", json!({})).to_string().contains("sk-test-key"), "status never shows the key");
 }
 
@@ -108,7 +115,9 @@ fn ai_errors_from_the_service_are_named() {
     let (url, _seen) = mock_messages_api(401, json!({ "error": { "type": "authentication_error", "message": "invalid x-api-key" } }));
     let mut a = Automation::new().with_root(&dir).unwrap().with_ai_settings(settings(&url));
     let doc = invoice(&mut a);
-    assert!(matches!(a.call("ai_summarize", &json!({ "doc": doc, "language": "Finnish" })), Err(ToolError::Failed(m)) if m.contains("API key was refused")));
+    assert!(
+        matches!(a.call("ai_summarize", &json!({ "doc": doc, "language": "Finnish" })), Err(ToolError::Failed(m)) if m.contains("API key was refused"))
+    );
 }
 
 #[test]

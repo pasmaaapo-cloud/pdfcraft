@@ -23,7 +23,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let mut a11y_action: Option<crate::a11y_ui::PanelAction> = None;
     let mut compare_action: Option<crate::compare_ui::PanelAction> = None;
     let mut ai_action: Option<crate::ai_ui::PanelAction> = None;
-    let ai_configured = crate::ai_ui::settings(&app.ai_key, &app.ai_model).is_some();
+    let ai_configured = crate::ai_ui::settings(&app.ai_key, &app.ai_model, app.ai_endpoint.as_deref()).is_some();
     let mut bm_rename = app.bookmark_rename.clone();
     let bm_editable = app.session.get(id).is_some_and(|d| d.allows_assembly() && d.read_only_reason.is_none());
     // Prepare a form is open: the Fields panel orders tabs.

@@ -416,8 +416,8 @@ fn digit_at(s: &[char], k: usize) -> Option<u32> {
 /// The check characters of the Finnish personal identity code, indexed by the nine-digit number
 /// (birth date and individual number) modulo 31.
 const FI_ID_CHECK: [char; 31] = [
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S',
-    'T', 'U', 'V', 'W', 'X', 'Y',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'U', 'V', 'W',
+    'X', 'Y',
 ];
 
 /// The century a Finnish personal identity code's separator stands for: `+` 1800s; `-`, Y, X,
@@ -549,7 +549,7 @@ fn iban(s: &[char], i: usize) -> Option<usize> {
         let at = match s.get(k) {
             Some(c) if c.is_ascii_alphanumeric() => k,
             // A space only between full groups of four, and only before another character.
-            Some(' ') if chars.len() % 4 == 0 && !chars.is_empty() && s.get(k + 1).is_some_and(char::is_ascii_alphanumeric) => k + 1,
+            Some(' ') if chars.len().is_multiple_of(4) && !chars.is_empty() && s.get(k + 1).is_some_and(char::is_ascii_alphanumeric) => k + 1,
             _ => break,
         };
         let Some(c) = s.get(at) else { break };
@@ -645,7 +645,7 @@ mod tests {
         );
         // 29 February exists in 2000, so 290200A… is a date; 290200-… (1900) is not.
         let leap = format!("290200A{}{}", "123", FI_ID_CHECK[(290200123u32 % 31) as usize]);
-        assert_eq!(found(Pattern::FiPersonalId, &leap), [leap.clone()]);
+        assert_eq!(found(Pattern::FiPersonalId, &leap), std::slice::from_ref(&leap));
     }
 
     #[test]
@@ -669,7 +669,13 @@ mod tests {
                 Pattern::Iban,
                 "Tili FI21 1234 5600 0007 85 tai FI2112345600000785. DE89 3704 0044 0532 0130 00, gb82 west 1234 5698 7654 32, SE45 5000 0000 0583 9825 7466."
             ),
-            ["FI21 1234 5600 0007 85", "FI2112345600000785", "DE89 3704 0044 0532 0130 00", "gb82 west 1234 5698 7654 32", "SE45 5000 0000 0583 9825 7466"]
+            [
+                "FI21 1234 5600 0007 85",
+                "FI2112345600000785",
+                "DE89 3704 0044 0532 0130 00",
+                "gb82 west 1234 5698 7654 32",
+                "SE45 5000 0000 0583 9825 7466"
+            ]
         );
         // A wrong check digit; Finland's length with a digit missing or added; groups that are not
         // fours; an IBAN run into a word.

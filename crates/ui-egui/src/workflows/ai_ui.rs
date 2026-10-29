@@ -48,11 +48,14 @@ pub(crate) enum PanelAction {
 }
 
 /// The settings to use: the key from Preferences, else the environment's.
-pub(crate) fn settings(key: &str, model: &str) -> Option<pdfcraft_ai::Settings> {
+pub(crate) fn settings(key: &str, model: &str, endpoint: Option<&str>) -> Option<pdfcraft_ai::Settings> {
     let mut s = pdfcraft_ai::Settings::with_key(key).or_else(pdfcraft_ai::Settings::from_env)?;
     let model = model.trim();
     if !model.is_empty() {
         s.model = model.to_string();
+    }
+    if let Some(e) = endpoint {
+        s.endpoint = e.to_string();
     }
     Some(s)
 }
@@ -79,7 +82,10 @@ pub(crate) fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut AiPanel, id: DocI
         return action;
     }
     if !copying {
-        ui.label(egui::RichText::new(tl!("This document's security settings don't allow copying its text, so the AI Assistant can't read it.")).color(t.text_muted));
+        ui.label(
+            egui::RichText::new(tl!("This document's security settings don't allow copying its text, so the AI Assistant can't read it."))
+                .color(t.text_muted),
+        );
         return None;
     }
     let busy = state.run.as_ref().is_some_and(|r| r.doc == id);
@@ -92,13 +98,16 @@ pub(crate) fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut AiPanel, id: DocI
         }
     });
     ui.add_space(6.0);
-    let edit = ui.add(
-        egui::TextEdit::multiline(&mut state.question)
-            .hint_text(tl!("Ask about this document…"))
-            .desired_rows(2)
-            .desired_width(f32::INFINITY)
-            .char_limit(pdfcraft_ai::MAX_QUESTION_CHARS),
-    );
+    let label = ui.label(egui::RichText::new(tl!("Question")).small().color(t.text_muted));
+    let edit = ui
+        .add(
+            egui::TextEdit::multiline(&mut state.question)
+                .hint_text(tl!("Ask about this document…"))
+                .desired_rows(2)
+                .desired_width(f32::INFINITY)
+                .char_limit(pdfcraft_ai::MAX_QUESTION_CHARS),
+        )
+        .labelled_by(label.id);
     // Enter asks; Shift+Enter starts a new line.
     let enter = edit.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter) && !i.modifiers.shift);
     let ready = !busy && !state.question.trim().is_empty();
@@ -127,7 +136,7 @@ pub(crate) fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut AiPanel, id: DocI
                         ui.horizontal_wrapped(|ui| {
                             ui.label(egui::RichText::new(tl!("Pages:")).small().color(t.text_muted));
                             for p in &a.cited_pages {
-                                if widgets::pill_button(ui, &p.to_string(), false).clicked() {
+                                if widgets::pill_button(ui, &crate::i18n::fmt(tl!("p. {n}"), &[("n", &p.to_string())]), false).clicked() {
                                     action = Some(PanelAction::GoTo((*p as usize).saturating_sub(1)));
                                 }
                             }
@@ -173,7 +182,7 @@ impl PdfCraftApp {
     /// Start a request for the active document on a worker thread.
     fn start_ai(&mut self, question: Option<String>) {
         let Some((_, id)) = self.active_ids() else { return };
-        let Some(settings) = settings(&self.ai_key, &self.ai_model) else {
+        let Some(settings) = settings(&self.ai_key, &self.ai_model, self.ai_endpoint.as_deref()) else {
             self.run_command("app.preferences");
             return;
         };
@@ -254,7 +263,12 @@ fn language_name(code: &str) -> &'static str {
 }
 
 /// Read the pages' text and ask the model (on the worker thread).
-fn ask(source: pdfcraft_engine::export::ExportSource, pages: usize, settings: &pdfcraft_ai::Settings, task: &pdfcraft_ai::Task) -> Result<pdfcraft_ai::Answer, String> {
+fn ask(
+    source: pdfcraft_engine::export::ExportSource,
+    pages: usize,
+    settings: &pdfcraft_ai::Settings,
+    task: &pdfcraft_ai::Task,
+) -> Result<pdfcraft_ai::Answer, String> {
     let mut exporter = pdfcraft_engine::export::Exporter::from_source(source);
     let mut texts = Vec::new();
     let mut chars = 0usize;

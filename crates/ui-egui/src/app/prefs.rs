@@ -191,9 +191,8 @@ impl PdfCraftApp {
     /// The AI Assistant's key and model. Settings files are untrusted: anything but short
     /// single-line text is ignored.
     fn restore_ai_prefs(&mut self, v: &serde_json::Value) {
-        let text = |key: &str, max: usize| {
-            v[key].as_str().filter(|s| s.chars().count() <= max && !s.contains(['\n', '\r'])).map(|s| s.trim().to_string())
-        };
+        let text =
+            |key: &str, max: usize| v[key].as_str().filter(|s| s.chars().count() <= max && !s.contains(['\n', '\r'])).map(|s| s.trim().to_string());
         if let Some(key) = text("ai_key", 256) {
             self.ai_key = key;
         }

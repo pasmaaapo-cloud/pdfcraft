@@ -62,6 +62,9 @@ impl PdfCraftApp {
         }
         self.notify_fmt("Converting {name}…", &[("name", &stem)]);
         self.office_job = Some(OfficeJob { name, receiver: rx });
+        if self.run_inline {
+            self.poll_office();
+        }
     }
 
     /// Open a finished conversion.
