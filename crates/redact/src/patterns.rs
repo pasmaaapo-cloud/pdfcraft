@@ -1,6 +1,7 @@
 //! Search & Redact patterns (Acrobat's Find Text ▸ Patterns): phone numbers, email addresses,
-//! credit card numbers, US Social Security numbers and dates. Each matcher works on a page's
-//! text as characters and returns character ranges; callers map them to glyphs and areas.
+//! credit card numbers, US Social Security numbers and dates, plus the Finnish personal identity
+//! code (henkilötunnus), the Finnish business ID (Y-tunnus) and IBANs. Each matcher works on a
+//! page's text as characters and returns character ranges; callers map them to glyphs and areas.
 
 use std::ops::Range;
 
@@ -11,9 +12,13 @@ pub enum Pattern {
     CreditCard,
     Ssn,
     Date,
+    FiPersonalId,
+    FiBusinessId,
+    Iban,
 }
 
-pub const PATTERNS: [Pattern; 5] = [Pattern::Phone, Pattern::Email, Pattern::CreditCard, Pattern::Ssn, Pattern::Date];
+pub const PATTERNS: [Pattern; 8] =
+    [Pattern::Phone, Pattern::Email, Pattern::CreditCard, Pattern::Ssn, Pattern::Date, Pattern::FiPersonalId, Pattern::FiBusinessId, Pattern::Iban];
 
 impl Pattern {
     pub fn label(self) -> &'static str {
@@ -23,6 +28,9 @@ impl Pattern {
             Pattern::CreditCard => "Credit Cards",
             Pattern::Ssn => "Social Security Numbers",
             Pattern::Date => "Dates",
+            Pattern::FiPersonalId => "Finnish Personal Identity Codes",
+            Pattern::FiBusinessId => "Finnish Business IDs",
+            Pattern::Iban => "Bank Account Numbers (IBAN)",
         }
     }
 
@@ -33,6 +41,9 @@ impl Pattern {
             Pattern::CreditCard => "credit-card",
             Pattern::Ssn => "ssn",
             Pattern::Date => "date",
+            Pattern::FiPersonalId => "fi-personal-id",
+            Pattern::FiBusinessId => "fi-business-id",
+            Pattern::Iban => "iban",
         }
     }
 
@@ -397,6 +408,165 @@ fn date(s: &[char], i: usize) -> Option<usize> {
     Some(k2 + y - i)
 }
 
+/// The value of an ASCII digit at `k`.
+fn digit_at(s: &[char], k: usize) -> Option<u32> {
+    s.get(k).and_then(|c| c.to_digit(10))
+}
+
+/// The check characters of the Finnish personal identity code, indexed by the nine-digit number
+/// (birth date and individual number) modulo 31.
+const FI_ID_CHECK: [char; 31] = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S',
+    'T', 'U', 'V', 'W', 'X', 'Y',
+];
+
+/// The century a Finnish personal identity code's separator stands for: `+` 1800s; `-`, Y, X,
+/// W, V, U 1900s; A, B, C, D, E, F 2000s (the letters since 2023).
+fn fi_century(c: char) -> Option<i32> {
+    match c.to_ascii_uppercase() {
+        '+' => Some(1800),
+        '-' | 'Y' | 'X' | 'W' | 'V' | 'U' => Some(1900),
+        'A' | 'B' | 'C' | 'D' | 'E' | 'F' => Some(2000),
+        _ => None,
+    }
+}
+
+/// A Finnish personal identity code (henkilötunnus), "131052-308T": DDMMYY, the century sign,
+/// a three-digit individual number and a check character. It matches only when the date exists
+/// and the check character is right, so other eleven-character codes are left alone.
+fn fi_personal_id(s: &[char], i: usize) -> Option<usize> {
+    if word(i.checked_sub(1).and_then(|p| s.get(p))) || word(s.get(i + 11)) {
+        return None;
+    }
+    let mut digits = [0u32; 9];
+    for (slot, k) in digits.iter_mut().zip((0..6).chain(7..10)) {
+        *slot = digit_at(s, i + k)?;
+    }
+    let century = fi_century(*s.get(i + 6)?)?;
+    let [d1, d2, m1, m2, y1, y2, n1, n2, n3] = digits;
+    let year = century + (y1 * 10 + y2) as i32;
+    chrono::NaiveDate::from_ymd_opt(year, m1 * 10 + m2, d1 * 10 + d2)?;
+    // Individual numbers 002–899 are permanent, 900–999 temporary; 000 and 001 are never issued.
+    if n1 * 100 + n2 * 10 + n3 < 2 {
+        return None;
+    }
+    let number = digits.iter().fold(0u32, |acc, d| acc * 10 + d);
+    let check = FI_ID_CHECK.get((number % 31) as usize)?;
+    (s.get(i + 10).map(char::to_ascii_uppercase) == Some(*check)).then_some(11)
+}
+
+/// The check digit of a Finnish business ID's seven digits, or `None` when no business ID can
+/// have those digits (a remainder of 1 is never issued).
+fn fi_business_check(digits: &[u32; 7]) -> Option<u32> {
+    const WEIGHTS: [u32; 7] = [7, 9, 10, 5, 8, 4, 2];
+    let sum: u32 = digits.iter().zip(WEIGHTS).map(|(d, w)| d * w).sum();
+    match sum % 11 {
+        0 => Some(0),
+        1 => None,
+        r => Some(11 - r),
+    }
+}
+
+/// A Finnish business ID (Y-tunnus), "1572860-0", or the VAT number written from it,
+/// "FI15728600". Matches only with the right check digit.
+fn fi_business_id(s: &[char], i: usize) -> Option<usize> {
+    if word(i.checked_sub(1).and_then(|p| s.get(p))) {
+        return None;
+    }
+    let vat = matches!((s.get(i), s.get(i + 1)), (Some('F' | 'f'), Some('I' | 'i')));
+    let first = if vat { i + 2 } else { i };
+    let mut digits = [0u32; 7];
+    for (k, slot) in digits.iter_mut().enumerate() {
+        *slot = digit_at(s, first + k)?;
+    }
+    let (check_at, len) = if vat { (first + 7, 10) } else { (first + 8, 9) };
+    if !vat && s.get(first + 7) != Some(&'-') {
+        return None;
+    }
+    if word(s.get(i + len)) || digit_at(s, check_at)? != fi_business_check(&digits)? {
+        return None;
+    }
+    Some(len)
+}
+
+/// IBAN lengths of the countries whose registry entry we are sure of; any other country code
+/// takes a length within the standard's 15–34 characters. The check digits decide either way.
+const IBAN_LENGTHS: [(&str, usize); 18] = [
+    ("AT", 20),
+    ("BE", 16),
+    ("CH", 21),
+    ("DE", 22),
+    ("DK", 18),
+    ("EE", 20),
+    ("ES", 24),
+    ("FI", 18),
+    ("FR", 27),
+    ("GB", 22),
+    ("IE", 22),
+    ("IT", 27),
+    ("LT", 20),
+    ("LV", 21),
+    ("NL", 18),
+    ("NO", 15),
+    ("PL", 28),
+    ("SE", 24),
+];
+
+/// The most characters an IBAN has (ISO 13616).
+const IBAN_MAX: usize = 34;
+
+/// Whether the IBAN characters pass the ISO 7064 MOD 97-10 check: the first four moved to the
+/// end, letters read as 10–35, the whole number leaves remainder 1 when divided by 97.
+fn iban_checks(chars: &[char]) -> bool {
+    let (head, tail) = chars.split_at(chars.len().min(4));
+    let mut rem: u32 = 0;
+    for c in tail.iter().chain(head) {
+        let Some(v) = c.to_digit(36) else { return false };
+        // Letters add two decimal digits, digits one; the remainder stays below 97 throughout.
+        rem = if v >= 10 { (rem * 100 + v) % 97 } else { (rem * 10 + v) % 97 };
+    }
+    rem == 1
+}
+
+/// An IBAN, written solid ("FI2112345600000785") or in the printed groups of four
+/// ("FI21 1234 5600 0007 85"). Matches only when the length suits the country and the check
+/// digits are right.
+fn iban(s: &[char], i: usize) -> Option<usize> {
+    if word(i.checked_sub(1).and_then(|p| s.get(p))) {
+        return None;
+    }
+    let country: String = [s.get(i)?, s.get(i + 1)?].into_iter().map(char::to_ascii_uppercase).collect();
+    if !country.chars().all(|c| c.is_ascii_uppercase()) || digit_at(s, i + 2).is_none() || digit_at(s, i + 3).is_none() {
+        return None;
+    }
+    let want = IBAN_LENGTHS.iter().find(|(c, _)| *c == country).map(|(_, n)| *n);
+    // Collect up to the longest IBAN, allowing one space before each group of four.
+    let mut chars: Vec<char> = Vec::with_capacity(IBAN_MAX);
+    let mut k = i;
+    // Ends of the candidates, after each character: (characters so far, position after it).
+    let mut ends: Vec<(usize, usize)> = Vec::with_capacity(IBAN_MAX);
+    while chars.len() < IBAN_MAX {
+        let at = match s.get(k) {
+            Some(c) if c.is_ascii_alphanumeric() => k,
+            // A space only between full groups of four, and only before another character.
+            Some(' ') if chars.len() % 4 == 0 && !chars.is_empty() && s.get(k + 1).is_some_and(char::is_ascii_alphanumeric) => k + 1,
+            _ => break,
+        };
+        let Some(c) = s.get(at) else { break };
+        chars.push(c.to_ascii_uppercase());
+        k = at + 1;
+        ends.push((chars.len(), k));
+    }
+    // The longest candidate that ends at a word boundary, has an allowed length and checks out.
+    ends.iter().rev().find_map(|&(n, end)| {
+        let len_ok = match want {
+            Some(w) => n == w,
+            None => (15..=IBAN_MAX).contains(&n),
+        };
+        (len_ok && !word(s.get(end)) && chars.get(..n).is_some_and(iban_checks)).then_some(end - i)
+    })
+}
+
 /// Character ranges of `text` matching `pattern`.
 pub fn find(pattern: Pattern, text: &[char]) -> Vec<Range<usize>> {
     let f: fn(&[char], usize) -> Option<usize> = match pattern {
@@ -405,6 +575,9 @@ pub fn find(pattern: Pattern, text: &[char]) -> Vec<Range<usize>> {
         Pattern::CreditCard => credit_card,
         Pattern::Ssn => ssn,
         Pattern::Date => date,
+        Pattern::FiPersonalId => fi_personal_id,
+        Pattern::FiBusinessId => fi_business_id,
+        Pattern::Iban => iban,
     };
     let mut out = Vec::new();
     let mut i = 0;
@@ -454,6 +627,74 @@ mod tests {
     fn found(p: Pattern, s: &str) -> Vec<String> {
         let c: Vec<char> = s.chars().collect();
         find(p, &c).into_iter().map(|r| c[r].iter().collect()).collect()
+    }
+
+    #[test]
+    fn finnish_personal_identity_codes_need_a_real_date_and_check_character() {
+        // DVV's published example, a 1900s code with the newer century letter, a 2000s one and a
+        // temporary (900–999) individual number; lowercase check characters are read as well.
+        assert_eq!(
+            found(Pattern::FiPersonalId, "Hetu 131052-308T, 010594Y9032 (uusi), 020502E902X; väliaik. 311299-999E, pieni 131052-308t."),
+            ["131052-308T", "010594Y9032", "020502E902X", "311299-999E", "131052-308t"]
+        );
+        // Wrong check character, impossible dates (31 April, 29 Feb 1900), individual number 001,
+        // an unknown century sign, and codes run into other letters or digits.
+        assert_eq!(
+            found(Pattern::FiPersonalId, "020502E902Y 310452-308T 290200-123A 131052-001X 131052G308T X131052-308T 131052-308T5 1131052-308T"),
+            Vec::<String>::new()
+        );
+        // 29 February exists in 2000, so 290200A… is a date; 290200-… (1900) is not.
+        let leap = format!("290200A{}{}", "123", FI_ID_CHECK[(290200123u32 % 31) as usize]);
+        assert_eq!(found(Pattern::FiPersonalId, &leap), [leap.clone()]);
+    }
+
+    #[test]
+    fn finnish_business_ids_need_the_right_check_digit() {
+        assert_eq!(
+            found(Pattern::FiBusinessId, "Y-tunnus 0112038-9, ALV FI01120389, 2331972-7 ja fi23319727."),
+            ["0112038-9", "FI01120389", "2331972-7", "fi23319727"]
+        );
+        // Wrong check digit; a remainder of 1 is never issued (0000010-?); too few or too many digits;
+        // the ID inside a longer run; a phone-like grouping.
+        assert_eq!(
+            found(Pattern::FiBusinessId, "0112038-8 0000010-0 112038-9 00112038-9 0112038-95 X0112038-9 FI011203891 0112038 9"),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn ibans_need_the_country_length_and_check_digits() {
+        assert_eq!(
+            found(
+                Pattern::Iban,
+                "Tili FI21 1234 5600 0007 85 tai FI2112345600000785. DE89 3704 0044 0532 0130 00, gb82 west 1234 5698 7654 32, SE45 5000 0000 0583 9825 7466."
+            ),
+            ["FI21 1234 5600 0007 85", "FI2112345600000785", "DE89 3704 0044 0532 0130 00", "gb82 west 1234 5698 7654 32", "SE45 5000 0000 0583 9825 7466"]
+        );
+        // A wrong check digit; Finland's length with a digit missing or added; groups that are not
+        // fours; an IBAN run into a word.
+        assert_eq!(
+            found(Pattern::Iban, "FI21 1234 5600 0007 86 FI21 1234 5600 0007 8 FI21123456000007855 FI21 12345 600 0007 85 XFI2112345600000785"),
+            Vec::<String>::new()
+        );
+        // The text after a correctly grouped IBAN is not swallowed.
+        assert_eq!(found(Pattern::Iban, "FI21 1234 5600 0007 85 EUR"), ["FI21 1234 5600 0007 85"]);
+    }
+
+    #[test]
+    fn new_patterns_have_ids_and_round_trip() {
+        for p in [Pattern::FiPersonalId, Pattern::FiBusinessId, Pattern::Iban] {
+            assert_eq!(Pattern::from_id(p.id()), Some(p));
+            assert!(PATTERNS.contains(&p));
+        }
+    }
+
+    #[test]
+    fn finnish_phone_numbers_are_already_phone_numbers() {
+        assert_eq!(
+            found(Pattern::Phone, "puh. 040 123 4567, +358 40 123 4567, (09) 1234 5678, 09 1234 5678"),
+            ["040 123 4567", "+358 40 123 4567", "(09) 1234 5678", "09 1234 5678"]
+        );
     }
 
     #[test]

@@ -1133,7 +1133,10 @@
 	Phone Numbers	Puhelinnumerot
 	Email Addresses	Sähköpostiosoitteet
 	Credit Cards	Luottokortit
-	Social Security Numbers	Henkilötunnukset
+	Social Security Numbers	Yhdysvaltain sosiaaliturvatunnukset (SSN)
+	Finnish Personal Identity Codes	Henkilötunnukset
+	Finnish Business IDs	Y-tunnukset ja ALV-numerot
+	Bank Account Numbers (IBAN)	Tilinumerot (IBAN)
 	Dates	Päivämäärät
 	Text in images isn't found; recognise text (OCR) first.	Kuvissa olevaa tekstiä ei löydy; tunnista teksti (OCR) ensin.
 	No matches.	Ei osumia.

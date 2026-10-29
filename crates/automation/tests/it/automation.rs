@@ -4290,6 +4290,32 @@ fn redacting_through_tools() {
 }
 
 #[test]
+/// The Finnish identifier patterns mark, apply and save away identity codes, business IDs and
+/// IBANs, and leave look-alikes with a wrong check character or digit in place.
+fn redacting_finnish_identifiers_through_tools() {
+    let dir = workdir("redact-finnish");
+    std::fs::write(
+        dir.join("lasku.txt"),
+        "Asiakas 131052-308T\nY-tunnus 0112038-9\nTilille FI21 1234 5600 0007 85\nViite 131052-308U ja 0112038-8\nKiitos",
+    )
+    .unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_create", json!({ "from": "text", "path": "lasku.txt" }))["doc"].as_u64().unwrap();
+    for (pattern, n) in [("fi-personal-id", 1), ("fi-business-id", 1), ("iban", 1)] {
+        let r = ok(&mut a, "redact_mark", json!({ "doc": doc, "pattern": pattern }));
+        assert_eq!(r["marked"].as_u64(), Some(n), "{pattern}");
+    }
+    assert_eq!(ok(&mut a, "redact_apply", json!({ "doc": doc }))["applied"], 3);
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "lasku.pdf" }));
+    let reopened = ok(&mut a, "doc_open", json!({ "path": "lasku.pdf" }))["doc"].as_u64().unwrap();
+    let text = &page_text(&mut a, reopened)[0];
+    assert!(!text.contains("308T") && !text.contains("0112038-9") && !text.contains("0007 85"), "{text}");
+    assert!(text.contains("131052-308U") && text.contains("0112038-8") && text.contains("Kiitos"), "look-alikes stay: {text}");
+    assert!(matches!(a.call("redact_mark", &json!({ "doc": doc, "pattern": "fi-hetu" })), Err(ToolError::InvalidArgs(_))));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 /// Mark, apply and save remove the complete international number while retaining labels and controls.
 fn redacting_italian_international_slash_numbers_through_tools() {
     let dir = workdir("redact-italian-international-slash");

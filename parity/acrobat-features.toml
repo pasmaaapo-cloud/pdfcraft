@@ -5705,11 +5705,11 @@ title = "Pattern sets per locale"
 area = "G"
 tier = "P1"
 milestone = "M8"
-status = "planned"
-commands = []
-tools = []
-evidence = []
-notes = ""
+status = "partial"
+commands = ["redact.search"]
+tools = ["redact_mark"]
+evidence = ["crates/redact/src/patterns.rs::finnish_personal_identity_codes_need_a_real_date_and_check_character", "crates/redact/src/patterns.rs::finnish_business_ids_need_the_right_check_digit", "crates/redact/src/patterns.rs::ibans_need_the_country_length_and_check_digits", "crates/automation/tests/it/automation.rs::redacting_finnish_identifiers_through_tools"]
+notes = "Finnish personal identity codes (date and check character validated, all century signs including the 2023 letters), Finnish business IDs and FI VAT numbers (check digit) and IBANs (country length where known, MOD 97-10) join the pattern list for every locale. Not yet: other countries' national IDs, choosing a pattern set by locale"
 
 [[feature]]
 id = "protect.redact-partial-words"
