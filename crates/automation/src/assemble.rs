@@ -44,6 +44,19 @@ impl Automation {
                 })?;
                 (format!("{title}.pdf"), bytes)
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            "office" => {
+                let path = a.str("path")?;
+                if !pdfcraft_engine::office::is_office_file(Path::new(path)) {
+                    return Err(ToolError::InvalidArgs(format!(
+                        "office needs a {} file",
+                        pdfcraft_engine::office::OFFICE_EXTENSIONS.join(", ")
+                    )));
+                }
+                let path = self.resolve(path, false)?;
+                let stem = path.file_stem().map_or_else(|| "Document".to_string(), |s| s.to_string_lossy().into_owned());
+                (format!("{stem}.pdf"), self.session.create_from_office(&path).map_err(failed)?)
+            }
             other => return Err(ToolError::InvalidArgs(format!("unknown source {other:?}"))),
         };
         let name = a.opt_str("name")?.map(str::to_owned).unwrap_or(name);

@@ -145,6 +145,8 @@ impl PdfCraftApp {
         v["comment_tool_pinned"] = serde_json::Value::Bool(self.comment_prefs.pinned);
         v["show_secured_notice"] = serde_json::Value::Bool(self.show_secured_notice);
         v["organize_zoom"] = serde_json::json!(self.organize_zoom);
+        v["ai_key"] = serde_json::json!(self.ai_key);
+        v["ai_model"] = serde_json::json!(self.ai_model);
         // Canonical names survive changes to the order of PAPERS and do not depend on UI language.
         v["print_paper"] = serde_json::json!(pdfcraft_engine::print::PAPERS.get(self.print_draft.paper).map(|(name, _)| *name));
         v.to_string()
@@ -183,6 +185,21 @@ impl PdfCraftApp {
         self.restore_view_prefs(&v);
         self.restore_comment_prefs(&v);
         self.restore_signature_prefs(&v);
+        self.restore_ai_prefs(&v);
+    }
+
+    /// The AI Assistant's key and model. Settings files are untrusted: anything but short
+    /// single-line text is ignored.
+    fn restore_ai_prefs(&mut self, v: &serde_json::Value) {
+        let text = |key: &str, max: usize| {
+            v[key].as_str().filter(|s| s.chars().count() <= max && !s.contains(['\n', '\r'])).map(|s| s.trim().to_string())
+        };
+        if let Some(key) = text("ai_key", 256) {
+            self.ai_key = key;
+        }
+        if let Some(model) = text("ai_model", 64) {
+            self.ai_model = model;
+        }
     }
 
     /// The panels, combine view, zoom and recent files.

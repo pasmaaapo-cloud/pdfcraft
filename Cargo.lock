@@ -4240,6 +4240,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdfcraft-ai"
+version = "0.15.0"
+dependencies = [
+ "serde_json",
+ "thiserror 2.0.21",
+ "ureq",
+]
+
+[[package]]
 name = "pdfcraft-annot"
 version = "0.15.0"
 dependencies = [
@@ -4268,6 +4277,7 @@ dependencies = [
  "base64 0.23.1",
  "flate2",
  "image",
+ "pdfcraft-ai",
  "pdfcraft-cos",
  "pdfcraft-engine",
  "pdfcraft-fonts",
@@ -4340,6 +4350,7 @@ dependencies = [
  "pdfcraft-model",
  "pdfcraft-xfa",
  "png 0.18.1",
+ "tempfile",
  "thiserror 2.0.21",
  "tiff",
  "zune-jpeg",
@@ -4661,6 +4672,7 @@ dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
+ "pdfcraft-ai",
  "pdfcraft-cos",
  "pdfcraft-engine",
  "pdfcraft-fonts",

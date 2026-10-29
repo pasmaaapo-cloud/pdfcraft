@@ -533,6 +533,8 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
         egui::RichText::new(tl!("Text, marks and signatures become part of the page. Other comments stay editable.")).small().color(t.text_muted),
     );
     ui.add_space(8.0);
+    ai_assistant(ui, app, t);
+    ui.add_space(8.0);
     date_format(ui, app, t);
     ui.add_space(8.0);
     ui.label(egui::RichText::new("JavaScript").font(theme::semibold(13.0)));
@@ -548,6 +550,26 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
                 .color(t.text_muted),
         );
     });
+}
+
+/// Preferences ▸ AI Assistant: the Anthropic API key and the model. Off until a key is given.
+fn ai_assistant(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) {
+    ui.label(egui::RichText::new(tl!("AI Assistant")).font(theme::semibold(13.0)));
+    ui.horizontal(|ui| {
+        let label = ui.label(tl!("Anthropic API key"));
+        ui.add(crate::widgets::line(&mut app.ai_key).password(true).desired_width(260.0).char_limit(256)).labelled_by(label.id);
+    });
+    ui.horizontal(|ui| {
+        let label = ui.label(tl!("Model"));
+        ui.add(crate::widgets::line(&mut app.ai_model).hint_text(pdfcraft_ai::DEFAULT_MODEL).desired_width(200.0).char_limit(64)).labelled_by(label.id);
+    });
+    let status = if crate::ai_ui::settings(&app.ai_key, &app.ai_model).is_some() {
+        tl!("On: the document's text is sent to Anthropic only when you ask the AI Assistant.")
+    } else {
+        tl!("Off. Without a key nothing is sent anywhere.")
+    };
+    ui.label(egui::RichText::new(status).small().color(t.text_muted));
+    ui.label(egui::RichText::new(tl!("The key is stored with your preferences on this computer, unencrypted.")).small().color(t.text_muted));
 }
 
 /// The Preferences dialog's OK row. Returns `true` to close.

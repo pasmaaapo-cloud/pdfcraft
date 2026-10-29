@@ -2830,3 +2830,48 @@ theme	Appearance	Teema
 	Rotate the selected pages clockwise	Kierrä valittuja sivuja myötäpäivään
 	Extract the selected pages…	Pura valitut sivut…
 	Delete the selected pages	Poista valitut sivut
+# CraftStudio fork: OCR languages, AI Assistant and Office conversion.
+	Finnish	Suomi
+	Swedish	Ruotsi
+	German	Saksa
+	French	Ranska
+	Spanish	Espanja
+	Italian	Italia
+	Dutch	Hollanti
+	Norwegian	Norja
+	Danish	Tanska
+	Estonian	Viro
+	Polish	Puola
+	Portuguese	Portugali
+	Russian	Venäjä
+	this language is read by Tesseract OCR, which is not installed (install it, or set PDFCRAFT_TESSERACT to tesseract's path)	Tätä kieltä lukee Tesseract OCR, jota ei ole asennettu (asenna se tai anna sen polku muuttujassa PDFCRAFT_TESSERACT)
+	Tesseract OCR is installed but has no data for this language (add it to Tesseract's tessdata folder)	Tesseract OCR on asennettu, mutta siinä ei ole tämän kielen tietoja (lisää ne Tesseractin tessdata-kansioon)
+	AI Assistant	Tekoälyavustaja
+	Summarize this document or ask it questions with Claude. Answers cite the pages they come from.	Tiivistä tämä dokumentti tai kysy siitä Claudelta. Vastaukset kertovat, miltä sivuilta tieto on.
+	Add your Anthropic API key first. The document's text is sent to Anthropic only when you ask.	Lisää ensin Anthropic-API-avaimesi. Dokumentin teksti lähetetään Anthropicille vain, kun kysyt.
+	Set up the AI Assistant…	Ota tekoälyavustaja käyttöön…
+	This document's security settings don't allow copying its text, so the AI Assistant can't read it.	Tämän dokumentin suojausasetukset eivät salli tekstin kopiointia, joten tekoälyavustaja ei voi lukea sitä.
+	Ask about this document…	Kysy tästä dokumentista…
+	Ask	Kysy
+	Reading the document…	Luetaan dokumenttia…
+	The document is long: only its first pages were read.	Dokumentti on pitkä: vain sen alkupään sivut luettiin.
+	The AI Assistant could not start.	Tekoälyavustaja ei käynnistynyt.
+	The AI Assistant stopped unexpectedly.	Tekoälyavustaja pysähtyi odottamatta.
+	The AI Assistant needs the desktop app.	Tekoälyavustaja vaatii työpöytäsovelluksen.
+	Anthropic API key	Anthropic-API-avain
+	On: the document's text is sent to Anthropic only when you ask the AI Assistant.	Päällä: dokumentin teksti lähetetään Anthropicille vain, kun kysyt tekoälyavustajalta.
+	Off. Without a key nothing is sent anywhere.	Pois päältä. Ilman avainta mitään ei lähetetä minnekään.
+	The key is stored with your preferences on this computer, unencrypted.	Avain tallennetaan asetustesi kanssa tälle tietokoneelle salaamattomana.
+	Office files	Office-tiedostot
+	Choose an Office file	Valitse Office-tiedosto
+	Converting Office files needs the desktop app	Office-tiedostojen muuntaminen vaatii työpöytäsovelluksen
+	An Office file is already being converted	Office-tiedostoa muunnetaan jo
+	The conversion could not start	Muunnos ei käynnistynyt
+	Converting {name}…	Muunnetaan {name}…
+	Office file	Office-tiedosto
+	converting Office files needs LibreOffice, which is not installed (install it, or set PDFCRAFT_SOFFICE to soffice's path)	Office-tiedostojen muuntaminen vaatii LibreOfficen, jota ei ole asennettu (asenna se tai anna soffice-ohjelman polku muuttujassa PDFCRAFT_SOFFICE)
+	the AI Assistant is not set up: add your Anthropic API key in Preferences ▸ AI Assistant (or set ANTHROPIC_API_KEY)	tekoälyavustajaa ei ole otettu käyttöön: lisää Anthropic-API-avaimesi kohdassa Asetukset ▸ Tekoälyavustaja (tai aseta ANTHROPIC_API_KEY)
+	the document has no text to read; recognise text (OCR) first if it is scanned	dokumentissa ei ole luettavaa tekstiä; jos se on skannattu, tunnista teksti (OCR) ensin
+	the API key was refused (check it in Preferences ▸ AI Assistant)	API-avain hylättiin (tarkista se kohdassa Asetukset ▸ Tekoälyavustaja)
+	the service is busy or the usage limit was reached; try again in a moment	palvelu on ruuhkainen tai käyttöraja täyttyi; yritä hetken päästä uudelleen
+@id	create.office	Luo PDF Office-tiedostosta…

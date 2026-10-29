@@ -1253,7 +1253,7 @@ pub fn tools() -> Vec<ToolDef> {
                     "doc": doc(),
                     "pages": pages("to recognise (default: all)"),
                     "dpi": { "type": "number", "minimum": 72, "maximum": 600, "description": "Resolution pages are read at (default 300; a scanned page is read at most at its own resolution)." },
-                    "language": { "type": "string", "enum": ["en"], "description": "Document language (default en)." },
+                    "language": { "type": "string", "enum": ["en", "fi", "sv", "de", "fr", "es", "it", "nl", "no", "da", "et", "pl", "pt", "ru"], "description": "Document language (default en). en uses the bundled models; every other language needs Tesseract OCR with that language's data installed (ocr_status says which are ready)." },
                     "skip_text_pages": { "type": "boolean", "description": "Leave pages that already contain text alone (default true). false also reads pictures on such pages, without adding their text again." },
                 }),
                 &["doc"],
@@ -1265,11 +1265,46 @@ pub fn tools() -> Vec<ToolDef> {
                     "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
                     "folder": { "type": "string" },
                     "dpi": { "type": "number", "minimum": 72, "maximum": 600 },
-                    "language": { "type": "string", "enum": ["en"] },
+                    "language": { "type": "string", "enum": ["en", "fi", "sv", "de", "fr", "es", "it", "nl", "no", "da", "et", "pl", "pt", "ru"] },
                     "skip_text_pages": { "type": "boolean", "description": "Leave pages that already contain text alone (default true); see ocr_recognize." },
                 }),
                 &["paths", "folder"],
             )),
+        t(
+            "ai_status",
+            "AI Assistant status",
+            "Whether the AI Assistant is set up (an Anthropic API key in ANTHROPIC_API_KEY; PDFCRAFT_AI_MODEL and PDFCRAFT_AI_ENDPOINT override the model and endpoint), and which model and endpoint it uses. The key itself is never returned.",
+        )
+        .ro()
+        .with(schema(json!({}), &[])),
+        t(
+            "ai_summarize",
+            "Summarize with AI",
+            "Summarize the document with the AI Assistant: the text of `pages` (default all) is sent to the configured Claude endpoint, which returns a summary citing pages as [p. N]. `language` names the summary's language (e.g. Finnish; default the document's). Sends document text off this computer: only when the user has set the assistant up, and never for documents that don't allow copying text. Returns text, cited_pages, pages_sent, truncated (pages left out past the length limit), model and token counts.",
+        )
+        .ro()
+        .with(schema(
+            json!({
+                "doc": { "type": "integer" },
+                "pages": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+                "language": { "type": "string", "maxLength": 64 },
+            }),
+            &["doc"],
+        )),
+        t(
+            "ai_ask",
+            "Ask the document with AI",
+            "Ask the AI Assistant a question about the document: the text of `pages` (default all) and the question are sent to the configured Claude endpoint, which answers in the question's language from the document only, citing pages as [p. N]. Same conditions and result as ai_summarize.",
+        )
+        .ro()
+        .with(schema(
+            json!({
+                "doc": { "type": "integer" },
+                "question": { "type": "string", "minLength": 1, "maxLength": 4000 },
+                "pages": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+            }),
+            &["doc", "question"],
+        )),
         t("ocr_status", "OCR status", "Whether text recognition is available (its models are installed: release packages include them; a source build fetches them with `cargo xtask models`; PDFCRAFT_MODELS overrides), where it looks for them, and the languages it reads.")
             .ro()
             .cmd("ocr.recognize")
@@ -1316,11 +1351,11 @@ pub fn tools() -> Vec<ToolDef> {
         t(
             "doc_create",
             "Create a PDF",
-            "Create a new, unsaved document and return it like doc_open: `blank` (pages, width, height in points; default 1 US Letter page), `images` (paths of PNG, JPEG, TIFF (every page), GIF or BMP files, one page each at the image's resolution) or `text` (a .txt path, or `text` directly; Western European (WinAnsi) characters only, others are refused). Save it with doc_save and a path.",
+            "Create a new, unsaved document and return it like doc_open: `blank` (pages, width, height in points; default 1 US Letter page), `images` (paths of PNG, JPEG, TIFF (every page), GIF or BMP files, one page each at the image's resolution) `text` (a .txt path, or `text` directly; Western European (WinAnsi) characters only, others are refused) or `office` (a `path` to a Word, Excel, PowerPoint, OpenDocument or RTF file, converted by an installed LibreOffice; macros never run). Save it with doc_save and a path.",
         )
         .with(schema(
             json!({
-                "from": { "type": "string", "enum": ["blank", "images", "text"] },
+                "from": { "type": "string", "enum": ["blank", "images", "text", "office"] },
                 "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
                 "dpi": { "type": "number", "minimum": 1, "maximum": 1200, "description": "For images: override the embedded resolution without resampling. 72 gives one point per pixel; omit to use each image's resolution (72 when absent)." },
                 "text": { "type": "string" },

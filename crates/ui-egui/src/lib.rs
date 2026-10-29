@@ -153,6 +153,7 @@ use tools::tags_ui;
 use widgets::icon_data;
 pub use widgets::icons;
 use workflows::a11y_ui;
+use workflows::ai_ui;
 use workflows::actions_ui;
 use workflows::combine_grid;
 use workflows::combine_ui;
@@ -162,6 +163,7 @@ use workflows::export_ui;
 use workflows::files;
 use workflows::js_ui;
 use workflows::ocr_ui;
+use workflows::office_ui;
 use workflows::optimize_ui;
 use workflows::print_ui;
 use workflows::web_print;
@@ -465,6 +467,14 @@ pub struct PdfCraftApp {
     /// Compare files: the chosen older document and the last result.
     pub compare_old: Option<DocId>,
     pub compare: Option<compare_ui::CompareState>,
+    /// The AI Assistant panel: question, answers and a request on its way.
+    pub(crate) ai: ai_ui::AiPanel,
+    /// Create ▸ PDF from Office file: a conversion on its way.
+    pub(crate) office_job: Option<office_ui::OfficeJob>,
+    /// Preferences ▸ AI Assistant: the Anthropic API key (empty: none, or the environment's)
+    /// and the model (empty: the default). Stored with the other preferences, in plain text.
+    pub ai_key: String,
+    pub ai_model: String,
     /// The JavaScript console and the Document JavaScripts draft.
     pub js_console: js_ui::JsConsole,
     pub doc_js: js_ui::DocJsDraft,

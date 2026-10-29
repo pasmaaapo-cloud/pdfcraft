@@ -15,6 +15,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod a11y;
+mod ai;
 mod batch;
 mod comments;
 mod content;
@@ -88,6 +89,8 @@ pub struct Automation {
     /// Documents that lost a listing to the cap. A page of one with no listing is refused rather
     /// than read as "a number is a position", which the page may no longer match.
     evicted: HashSet<DocId>,
+    /// The AI Assistant's settings; `None` reads them from the environment at each call.
+    ai_settings: Option<pdfcraft_ai::Settings>,
 }
 
 impl Default for Automation {
@@ -106,7 +109,14 @@ impl Automation {
             texts: TextCache::default(),
             listed: HashMap::new(),
             evicted: HashSet::new(),
+            ai_settings: None,
         }
+    }
+
+    /// Use these AI Assistant settings instead of the environment's (`ANTHROPIC_API_KEY`, …).
+    pub fn with_ai_settings(mut self, settings: pdfcraft_ai::Settings) -> Self {
+        self.ai_settings = Some(settings);
+        self
     }
 
     /// Confine every path the tools read or write to `root` (relative paths resolve inside it).

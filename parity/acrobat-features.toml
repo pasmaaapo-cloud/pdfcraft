@@ -6591,9 +6591,9 @@ tier = "P0"
 milestone = "M10"
 status = "partial"
 commands = ["ocr.recognize"]
-tools = ["ocr_recognize"]
-evidence = ["crates/ui-egui/tests/it/ocr.rs::recognize_text_dialog_adds_searchable_text"]
-notes = "Language choice exists, but the models read only the Latin alphabet without accents (English)."
+tools = ["ocr_recognize", "ocr_status"]
+evidence = ["crates/ui-egui/tests/it/ocr.rs::recognize_text_dialog_adds_searchable_text", "crates/automation/tests/it/automation.rs::ocr_reads_finnish_with_tesseract", "crates/ocr/src/tesseract.rs::tsv_words_become_lines_with_their_boxes"]
+notes = "English uses the bundled models; Finnish, Swedish, German, French, Spanish, Italian, Dutch, Norwegian, Danish, Estonian, Polish, Portuguese and Russian use an installed Tesseract with that language's data (read together with English); ocr_status says which are ready. The text layer is WinAnsi Helvetica, so Cyrillic and Polish letters outside it are not yet written. Not yet: bundling Tesseract or its data."
 
 [[feature]]
 id = "ocr.searchable-image"
@@ -6989,11 +6989,11 @@ title = "Create PDF from Office documents (LibreOffice sidecar)"
 area = "J"
 tier = "P2"
 milestone = "M10"
-status = "planned"
-commands = []
-tools = []
-evidence = []
-notes = ""
+status = "partial"
+commands = ["create.office"]
+tools = ["doc_create"]
+evidence = ["crates/create/src/office.rs::converts_an_rtf_with_an_installed_libreoffice", "crates/automation/tests/it/craftstudio.rs::doc_create_from_office_converts_with_libreoffice"]
+notes = "Word, Excel, PowerPoint, OpenDocument and RTF through an installed LibreOffice run headless with a private profile (macros never run); doc_create from office; File ▸ Create. Not yet: batch conversion, conversion settings, installing LibreOffice for the user. A damaged file LibreOffice still reads as text becomes a PDF of that text."
 
 [[feature]]
 id = "create.create-multiple"
@@ -9613,11 +9613,11 @@ title = "AI provider interface (local model or own endpoint), off by default"
 area = "N"
 tier = "P2"
 milestone = "M13"
-status = "planned"
+status = "partial"
 commands = []
-tools = []
-evidence = []
-notes = ""
+tools = ["ai_status"]
+evidence = ["crates/ai/src/tests.rs::endpoints_must_be_https_or_this_computer", "crates/automation/tests/it/craftstudio.rs::ai_tools_refuse_before_sending_anything"]
+notes = "Off until the user gives an Anthropic API key (Preferences ▸ AI Assistant or ANTHROPIC_API_KEY); the endpoint is the user's choice (HTTPS, or HTTP to this computer). Only page text is sent, never for documents that forbid copying. Not yet: other providers or a bundled local model."
 
 [[feature]]
 id = "misc.ai-summary"
@@ -9625,11 +9625,11 @@ title = "Summarize a document"
 area = "N"
 tier = "P2"
 milestone = "M13"
-status = "planned"
+status = "shipped"
 commands = []
-tools = []
-evidence = []
-notes = ""
+tools = ["ai_summarize"]
+evidence = ["crates/ai/src/tests.rs::the_request_carries_numbered_pages_and_the_task", "crates/automation/tests/it/craftstudio.rs::ai_errors_from_the_service_are_named"]
+notes = "AI Assistant panel ▸ Summarize, in the interface language; long documents send whole pages up to about 150,000 tokens and say so."
 
 [[feature]]
 id = "misc.ai-ask"
@@ -9637,11 +9637,11 @@ title = "Ask questions with citations to pages"
 area = "N"
 tier = "P2"
 milestone = "M13"
-status = "planned"
+status = "shipped"
 commands = []
-tools = []
-evidence = []
-notes = ""
+tools = ["ai_ask"]
+evidence = ["crates/ai/src/tests.rs::citations_are_found_in_either_language_and_kept_to_sent_pages", "crates/automation/tests/it/craftstudio.rs::ai_ask_sends_the_pages_and_returns_cited_pages"]
+notes = "AI Assistant panel ▸ Ask; answers cite pages as [p. N] or [s. N], shown as buttons that go to the page."
 
 [[feature]]
 id = "misc.ai-conversational-edit"

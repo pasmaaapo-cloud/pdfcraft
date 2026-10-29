@@ -4,6 +4,9 @@ use super::{
     source_kind, writable, write_full,
 };
 
+/// What a missing LibreOffice is told as. The UI catalogs key this exact text.
+pub const OFFICE_MISSING: &str = "converting Office files needs LibreOffice, which is not installed (install it, or set PDFCRAFT_SOFFICE to soffice's path)";
+
 impl Session {
     /// The page count of another PDF (Replace Pages, Insert Pages dialogs).
     pub fn page_count_of(&self, name: &str, bytes: &Arc<Vec<u8>>) -> Result<usize, EditError> {
@@ -29,6 +32,20 @@ impl Session {
     /// refused, naming the line and the character (never set as `?`).
     pub fn create_from_text(&self, title: &str, text: &str) -> Result<Arc<Vec<u8>>, EditError> {
         self.write_new(&pdfcraft_create::from_text(title, text, pdfcraft_create::LETTER, 11.0)?)
+    }
+
+    /// A new document from a Word, Excel, PowerPoint, OpenDocument or RTF file, converted by an
+    /// installed LibreOffice (Create ▸ PDF from Office file). The converted PDF is checked like
+    /// any opened source before it is returned.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn create_from_office(&self, path: &std::path::Path) -> Result<Arc<Vec<u8>>, EditError> {
+        let Some(soffice) = pdfcraft_create::office::find_office() else {
+            return Err(EditError::Source(OFFICE_MISSING.into()));
+        };
+        let bytes = Arc::new(pdfcraft_create::office::office_to_pdf(&soffice, path, pdfcraft_create::office::CONVERT_LIMIT)?);
+        let name = path.file_name().map_or_else(|| "document.pdf".to_string(), |n| n.to_string_lossy().into_owned());
+        open_source(&name, &bytes)?;
+        Ok(bytes)
     }
 
     /// [`Self::create_from_text`] for a report PdfCraft writes from documents (comment summaries,

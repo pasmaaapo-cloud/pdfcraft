@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
-pub use pdfcraft_ocr::{LANGUAGES, Models, Ocr, OcrError, PlacedWord};
+pub use pdfcraft_ocr::{LANGUAGES, Models, Ocr, OcrError, PlacedWord, Recognize};
 
 use crate::{DocId, Edit, EditError, Session};
 
@@ -18,7 +18,8 @@ use crate::{DocId, Edit, EditError, Session};
 pub struct OcrSettings {
     /// Resolution pages are rendered at for recognition (Acrobat's "Downsample to" choices).
     pub dpi: f32,
-    /// Language code from [`LANGUAGES`] (the models read the Latin alphabet, whatever this says).
+    /// Language code from [`LANGUAGES`]: `en` uses the bundled models, any other an installed
+    /// Tesseract with that language's data ([`recognizer`]).
     pub language: String,
     /// Leave pages that already have text alone (Acrobat reports "page contains renderable
     /// text" and skips them). When `false`, such pages are read too (a picture on a page that
@@ -89,9 +90,55 @@ pub fn engine() -> Result<Arc<Ocr>, String> {
     Ok(o)
 }
 
-/// Whether the recognition models are installed.
+/// Whether any recogniser is installed: the bundled models or Tesseract.
 pub fn available() -> bool {
-    Models::find().is_some()
+    Models::find().is_some() || tesseract().is_some()
+}
+
+/// The installed Tesseract, when there is one (native builds only).
+fn tesseract() -> Option<pdfcraft_ocr::tesseract::Tesseract> {
+    #[cfg(not(target_arch = "wasm32"))]
+    return pdfcraft_ocr::tesseract::Tesseract::find();
+    #[cfg(target_arch = "wasm32")]
+    None
+}
+
+/// What a missing Tesseract or language is told as. The UI catalogs key these exact texts.
+pub const NEED_TESSERACT: &str = "this language is read by Tesseract OCR, which is not installed (install it, or set PDFCRAFT_TESSERACT to tesseract's path)";
+pub const NEED_LANGUAGE_DATA: &str = "Tesseract OCR is installed but has no data for this language (add it to Tesseract's tessdata folder)";
+
+/// The recogniser for `settings.language`: the bundled models for English when they are
+/// installed (else Tesseract's English), and Tesseract for every other language, reading it
+/// together with English when English data is there too.
+pub fn recognizer(settings: &OcrSettings) -> Result<Arc<dyn Recognize + Send + Sync>, String> {
+    let lang = settings.language.trim();
+    if !LANGUAGES.iter().any(|l| l.0 == lang) {
+        return Err(format!("unsupported language {lang:?}"));
+    }
+    if lang == "en"
+        && let Ok(ocr) = engine()
+    {
+        return Ok(ocr);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use pdfcraft_ocr::tesseract::{TesseractRun, tesseract_language};
+        let Some(tesseract) = tesseract() else {
+            return Err(if lang == "en" { OcrError::NoModels.to_string() } else { NEED_TESSERACT.to_string() });
+        };
+        let code = tesseract_language(lang).ok_or_else(|| format!("unsupported language {lang:?}"))?;
+        let installed = tesseract.languages().map_err(|e| e.to_string())?;
+        if !installed.iter().any(|l| l == code) {
+            return Err(NEED_LANGUAGE_DATA.to_string());
+        }
+        let mut languages = vec![code.to_string()];
+        if code != "eng" && installed.iter().any(|l| l == "eng") {
+            languages.push("eng".to_string());
+        }
+        Ok(Arc::new(TesseractRun { tesseract, languages }))
+    }
+    #[cfg(target_arch = "wasm32")]
+    Err(OcrError::NoModels.to_string())
 }
 
 /// Everything recognition needs from a document, detached from the session.
@@ -109,7 +156,7 @@ pub struct OcrJob {
 impl OcrJob {
     /// Read the pages. `progress(done, total)` is called before each page; returning `false`
     /// stops (the pages read so far are returned).
-    pub fn run(self, ocr: &Ocr, mut progress: impl FnMut(usize, usize) -> bool) -> Vec<OcrPage> {
+    pub fn run(self, ocr: &(impl Recognize + ?Sized), mut progress: impl FnMut(usize, usize) -> bool) -> Vec<OcrPage> {
         let config =
             RenderConfig { password: self.password.as_deref().map(Arc::from), hide_comments: self.settings.native_text_only, ..Default::default() };
         let mut r = PageRenderer::new(self.bytes.clone(), config);
@@ -213,7 +260,7 @@ impl Session {
         if let Some(why) = self.get(id).and_then(|d| d.read_only_reason.clone()) {
             return Err(why);
         }
-        let ocr = engine()?;
+        let ocr = recognizer(&job.settings)?;
         let found = job.run(&ocr, |_, _| true);
         self.apply_ocr(id, &found).map_err(|e| e.to_string())?;
         Ok(found)
@@ -241,7 +288,7 @@ pub fn recognize_file(
     bytes: Arc<Vec<u8>>,
     password: Option<&str>,
     settings: OcrSettings,
-    ocr: &Ocr,
+    ocr: &(impl Recognize + ?Sized),
     progress: impl FnMut(usize, usize) -> bool,
 ) -> Result<FileResult, String> {
     let mut s = Session::new();

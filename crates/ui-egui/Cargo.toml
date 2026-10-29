@@ -19,6 +19,7 @@ craft-keymap = { workspace = true }
 craft-quit = { workspace = true, features = ["egui"] }
 pdfcraft-fonts = { workspace = true }
 pdfcraft-engine = { workspace = true }
+pdfcraft-ai = { workspace = true }
 pdfcraft-cos = { workspace = true }
 pdfcraft-render = { workspace = true }
 pdfcraft-model = { workspace = true }

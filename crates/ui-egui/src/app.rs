@@ -160,6 +160,10 @@ impl PdfCraftApp {
             pdfa: Default::default(),
             compare_old: None,
             compare: None,
+            ai: ai_ui::AiPanel::default(),
+            office_job: None,
+            ai_key: String::new(),
+            ai_model: String::new(),
             js_console: Default::default(),
             doc_js: Default::default(),
             a11y: a11y_ui::A11yState::default(),
@@ -519,6 +523,8 @@ impl eframe::App for PdfCraftApp {
         self.poll_export();
         self.auto_ocr_scanned_page();
         self.poll_ocr();
+        self.poll_ai();
+        self.poll_office();
         self.poll_optimize();
         self.poll_action();
         self.process_file_requests();

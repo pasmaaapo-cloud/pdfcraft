@@ -6559,6 +6559,34 @@ fn ocr_tools_make_a_scan_searchable() {
     assert!(matches!(a.call("ocr_recognize", &json!({ "doc": scan, "language": "xx" })), Err(ToolError::InvalidArgs(_))));
 }
 
+/// Finnish is read by Tesseract, ä ö å included, and the words land in a searchable text layer
+/// (the WinAnsi layer font holds them). Skipped when no Tesseract with Finnish data is installed.
+#[test]
+fn ocr_reads_finnish_with_tesseract() {
+    let dir = workdir("ocr-finnish");
+    let mut a = auto(&dir);
+    let status = ok(&mut a, "ocr_status", json!({}));
+    let fi = status["languages"].as_array().unwrap().iter().find(|l| l["code"] == "fi").cloned().unwrap();
+    if fi["ready"] != true {
+        assert!(fi["problem"].as_str().unwrap().contains("Tesseract"), "{fi}");
+        eprintln!("skipped: no Tesseract with Finnish data");
+        return;
+    }
+    let text = ok(&mut a, "doc_create", json!({ "from": "text", "text": "Hyvää päivää, Åsa! Eräpäivä on huomenna." }))["doc"].as_u64().unwrap();
+    ok(&mut a, "doc_export_images", json!({ "doc": text, "folder": "scan", "dpi": 200, "pages": [1] }));
+    let png = std::fs::read_dir(dir.join("scan")).unwrap().next().unwrap().unwrap().path();
+    let scan = ok(&mut a, "doc_create", json!({ "from": "images", "paths": [png.to_string_lossy()] }))["doc"].as_u64().unwrap();
+    let r = ok(&mut a, "ocr_recognize", json!({ "doc": scan, "language": "fi" }));
+    let read = r["pages"][0]["text"].as_str().unwrap().to_string();
+    assert!(read.contains("päivää") && read.contains("Eräpäivä"), "{r}");
+    let found = |a: &mut Automation, q: &str| ok(a, "text_find", json!({ "doc": scan, "query": q }))["count"].as_u64().unwrap();
+    assert_eq!(found(&mut a, "eräpäivä"), 1, "the layer is searchable with its accents");
+    ok(&mut a, "doc_save", json!({ "doc": scan, "path": "skannattu.pdf" }));
+    let again = ok(&mut a, "doc_open", json!({ "path": "skannattu.pdf" }))["doc"].as_u64().unwrap();
+    let saved = page_text(&mut a, again)[0].clone();
+    assert!(saved.contains("Eräpäivä"), "the text survives saving: {saved:?} (read {read:?})");
+}
+
 /// #1028: `skip_text_pages: false` reads a picture on a page that has its own text, and the
 /// page's own words are left out (counted) instead of being added a second time.
 #[test]

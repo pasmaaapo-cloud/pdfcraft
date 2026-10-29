@@ -26,8 +26,43 @@ pub const RECOGNITION_MODEL: &str = "text-recognition.onnx";
 /// `€`, which made a scanned "€250" read as "E250".
 pub const ALPHABET: &str = " 0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~€ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-/// The languages the models read (ISO 639-1); all use the Latin alphabet without accents.
-pub const LANGUAGES: &[(&str, &str)] = &[("en", "English")];
+/// The languages Recognize Text offers (ISO 639-1). The bundled models read English (the Latin
+/// alphabet without accents); every other language is read by an installed Tesseract
+/// ([`tesseract`]) with that language's data, together with English.
+pub const LANGUAGES: &[(&str, &str)] = &[
+    ("en", "English"),
+    ("fi", "Finnish"),
+    ("sv", "Swedish"),
+    ("de", "German"),
+    ("fr", "French"),
+    ("es", "Spanish"),
+    ("it", "Italian"),
+    ("nl", "Dutch"),
+    ("no", "Norwegian"),
+    ("da", "Danish"),
+    ("et", "Estonian"),
+    ("pl", "Polish"),
+    ("pt", "Portuguese"),
+    ("ru", "Russian"),
+];
+
+/// A text recogniser: the bundled models ([`Ocr`]) or an installed Tesseract.
+pub trait Recognize {
+    /// Recognise the text in an RGBA (or RGB, or grey) image, `width` × `height` pixels.
+    fn recognize(&self, pixels: &[u8], width: u32, height: u32) -> Result<Vec<Line>, OcrError>;
+}
+
+impl<R: Recognize + ?Sized> Recognize for std::sync::Arc<R> {
+    fn recognize(&self, pixels: &[u8], width: u32, height: u32) -> Result<Vec<Line>, OcrError> {
+        (**self).recognize(pixels, width, height)
+    }
+}
+
+impl Recognize for Ocr {
+    fn recognize(&self, pixels: &[u8], width: u32, height: u32) -> Result<Vec<Line>, OcrError> {
+        Ocr::recognize(self, pixels, width, height)
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum OcrError {

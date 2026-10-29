@@ -34,7 +34,11 @@ pub struct OcrDraft {
 
 impl Default for OcrDraft {
     fn default() -> Self {
-        OcrDraft { pages: OcrPages::All, from: 1, to: 1, language: "en".into(), dpi: 300, text_pages: false }
+        // The interface language when recognition offers it (Finnish for a Finnish interface),
+        // else English.
+        let ui = crate::i18n::current().code();
+        let language = LANGUAGES.iter().find(|l| l.0 == ui).map_or("en", |l| l.0);
+        OcrDraft { pages: OcrPages::All, from: 1, to: 1, language: language.into(), dpi: 300, text_pages: false }
     }
 }
 
@@ -275,7 +279,8 @@ impl PdfCraftApp {
         let work = move || {
             crate::i18n::set_current(lang);
             let result = recognize_guarded(|| {
-                pdfcraft_engine::ocr::engine().map(|ocr| {
+                let settings = job.settings.clone();
+                pdfcraft_engine::ocr::recognizer(&settings).map(|ocr| {
                     job.run(&ocr, |done, total| {
                         let Ok(mut s) = p.lock() else { return false };
                         s.done = done;
@@ -366,7 +371,7 @@ fn recognize_files(
     #[cfg(not(target_arch = "wasm32"))] dir: &std::path::Path,
 ) -> String {
     let (mut ok, mut words, mut failed) = (0, 0, Vec::new());
-    match pdfcraft_engine::ocr::engine() {
+    match pdfcraft_engine::ocr::recognizer(settings) {
         Err(e) => failed.push(e),
         Ok(ocr) => {
             for (i, (name, bytes)) in files.into_iter().enumerate() {

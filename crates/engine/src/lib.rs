@@ -138,7 +138,9 @@ pub use pictures::MarkFile;
 use pictures::{embed_image, fit_picture, mark_source};
 use protection::unrestricted;
 pub use protection::{Changes, Printing, Protection, SecuritySummary};
-pub use session::Session;
+pub use session::{OFFICE_MISSING, Session};
+#[cfg(not(target_arch = "wasm32"))]
+pub use pdfcraft_create::office;
 pub use sources::{CombineSource, Combined, combine_source_check, source_page_count};
 use sources::{open_source, open_source_with};
 #[cfg(test)]

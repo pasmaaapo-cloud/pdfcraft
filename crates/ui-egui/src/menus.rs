@@ -77,6 +77,7 @@ const PANELS: &[(RightPanel, &str, &str)] = &[
     (RightPanel::Tags, "tags", "Tags"),
     (RightPanel::Search, "search", "Search"),
     (RightPanel::Compare, "compare", "Compare"),
+    (RightPanel::Assistant, "assistant", "AI Assistant"),
 ];
 
 /// The English titles of the menus and submenus, for the bar's mnemonics in languages whose
@@ -129,7 +130,7 @@ const FILE: &[&str] = &[
     SEP,
     "print.dialog",
 ];
-const CREATE: &[&str] = &["create.file", "create.multiple", "create.multiple_separate", "create.images", "create.clipboard"];
+const CREATE: &[&str] = &["create.file", "create.office", "create.multiple", "create.multiple_separate", "create.images", "create.clipboard"];
 const EXPORT: &[&str] = &["export.docx", "export.pptx", "export.rtf", "export.html", "export.text", SEP, "export.image", "export.all_images"];
 const PROTECT: &[&str] = &["protect.password", "protect.remove", "protect.unlock", SEP, "protect.properties"];
 const EDIT: &[&str] = &[

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use crate::{Line, OcrError, Word};
+use crate::{Line, OcrError, Recognize, Word};
 
 /// How long one page may take before Tesseract is stopped.
 pub const PAGE_LIMIT: Duration = Duration::from_secs(300);
@@ -103,6 +103,19 @@ impl Tesseract {
         run(&mut cmd, None, PAGE_LIMIT)?;
         let tsv = read_capped(&base.with_extension("tsv"))?;
         Ok(parse_tsv(&tsv))
+    }
+}
+
+/// A Tesseract with the languages to read, ready to recognise pages.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TesseractRun {
+    pub tesseract: Tesseract,
+    pub languages: Vec<String>,
+}
+
+impl Recognize for TesseractRun {
+    fn recognize(&self, pixels: &[u8], width: u32, height: u32) -> Result<Vec<Line>, OcrError> {
+        self.tesseract.recognize(pixels, width, height, &self.languages)
     }
 }
 

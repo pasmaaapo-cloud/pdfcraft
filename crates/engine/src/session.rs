@@ -20,6 +20,7 @@ use crate::{
 
 mod editing;
 mod files;
+pub use files::OFFICE_MISSING;
 mod save;
 mod view;
 
