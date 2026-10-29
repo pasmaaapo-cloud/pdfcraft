@@ -1,0 +1,23 @@
+[package]
+name = "pdfcraft-ai"
+description = "AI Assistant: summarize a document and answer questions about it with page citations, through the user's own Claude (Anthropic Messages API) key; opt-in, never on by default"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["net"]
+# The HTTPS transport. Without it the crate builds prompts and parses answers only (wasm).
+net = ["dep:ureq"]
+
+[dependencies]
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ureq = { version = "3.4", default-features = false, features = ["rustls-no-provider", "_ring", "gzip", "platform-verifier"], optional = true }

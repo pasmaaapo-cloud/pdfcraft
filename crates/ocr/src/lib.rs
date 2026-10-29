@@ -14,6 +14,9 @@ use std::path::{Path, PathBuf};
 
 pub use pdfcraft_fonts::helvetica_width;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod tesseract;
+
 /// The model files, as named in ATTRIBUTION.toml.
 pub const DETECTION_MODEL: &str = "text-detection.onnx";
 pub const RECOGNITION_MODEL: &str = "text-recognition.onnx";

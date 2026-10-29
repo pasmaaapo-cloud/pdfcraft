@@ -5,6 +5,8 @@
 use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
 
 mod extract;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod office;
 mod upright_image;
 pub use extract::{ExtractedImage, ImageExport, extract_images, image_file};
 use pdfcraft_fonts::{literal, win_ansi, wrap};
