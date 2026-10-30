@@ -2880,7 +2880,7 @@ theme	Appearance	Teema
 	the service refused the request ({status}): {message}	palvelu hylkäsi pyynnön ({status}): {message}
 	could not reach the service: {error}	palveluun ei saatu yhteyttä: {error}
 	the service's answer could not be read: {error}	palvelun vastausta ei voitu lukea: {error}
-	This is a customised build of PdfCraft ({v}).	Tämä on PdfCraftin muokattu versio ({v}).
+	This is a customised build of PdfCraft, version {v}.	Tämä on PdfCraftin muokattu versio {v}.
 	It is updated by the installer it came with. Installing a PdfCraft release over it would remove its changes.	Se päivitetään omalla asennusohjelmallaan. PdfCraftin virallisen julkaisun asentaminen sen päälle poistaisi sen muutokset.
 @id	create.office	Luo PDF Office-tiedostosta…
 	Question	Kysymys

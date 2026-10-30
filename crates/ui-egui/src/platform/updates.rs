@@ -199,7 +199,7 @@ fn custom_build_dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
             ui.label(egui::RichText::new(tl!("Check for updates")).font(theme::semibold(16.0)));
         });
         ui.add_space(8.0);
-        ui.label(crate::i18n::fmt(tl!("This is a customised build of PdfCraft ({v})."), &[("v", &version)]));
+        ui.label(crate::i18n::fmt(tl!("This is a customised build of PdfCraft, version {v}."), &[("v", &version)]));
         ui.label(
             egui::RichText::new(tl!("It is updated by the installer it came with. Installing a PdfCraft release over it would remove its changes."))
                 .color(t.text_muted),
