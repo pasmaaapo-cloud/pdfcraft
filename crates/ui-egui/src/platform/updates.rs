@@ -10,6 +10,11 @@ use crate::{PdfCraftApp, theme, widgets};
 /// Where every PdfCraft release is listed.
 pub const RELEASES_PAGE: &str = "https://github.com/storytold/pdfcraft/releases";
 
+/// Set at compile time (`PDFCRAFT_NO_SELF_UPDATE=1`) by a customised build that is updated by its
+/// own installer: installing a PdfCraft release over it would drop its changes, so it never asks
+/// for one.
+pub const SELF_UPDATE: bool = option_env!("PDFCRAFT_NO_SELF_UPDATE").is_none();
+
 /// Stands in for the network in tests.
 #[cfg(not(target_arch = "wasm32"))]
 pub type UpdateSource = CheckSource;
@@ -24,6 +29,8 @@ pub(crate) struct Updates {
     startup_check: bool,
     #[cfg(not(target_arch = "wasm32"))]
     check_requested: bool,
+    /// Whether this build may look for and install PdfCraft releases ([`SELF_UPDATE`]).
+    self_update: bool,
 }
 
 impl Default for Updates {
@@ -36,6 +43,7 @@ impl Default for Updates {
             startup_check: false,
             #[cfg(not(target_arch = "wasm32"))]
             check_requested: false,
+            self_update: SELF_UPDATE,
         }
     }
 }
@@ -47,6 +55,11 @@ impl PdfCraftApp {
         self.updates.startup_check = on;
     }
 
+    /// Whether this build may look for and install PdfCraft releases (tests turn it off).
+    pub fn set_self_update(&mut self, on: bool) {
+        self.updates.self_update = on;
+    }
+
     /// Replaces the network with `source` (tests).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_update_source(&mut self, source: UpdateSource) {
@@ -55,6 +68,10 @@ impl PdfCraftApp {
 
     /// Help ▸ Check for updates: ask for the latest release and show the outcome.
     pub fn check_for_updates(&mut self) {
+        if !self.updates.self_update {
+            self.updates.open = true;
+            return;
+        }
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.updates.open = true;
@@ -70,6 +87,9 @@ impl PdfCraftApp {
     pub(crate) fn poll_updates(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         {
+            if !self.updates.self_update {
+                return;
+            }
             let Some(ctx) = self.ctx.clone() else { return };
             let updates = &mut self.updates;
             if std::mem::take(&mut updates.check_requested) {
@@ -84,6 +104,10 @@ impl PdfCraftApp {
 
 /// The startup prompt, and the Updates dialog that answers Help ▸ Check for updates.
 pub(crate) fn dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
+    if !app.updates.self_update {
+        custom_build_dialog(app, ctx);
+        return;
+    }
     #[cfg(not(target_arch = "wasm32"))]
     {
         // The restart helper is scheduled before the app closes, so no update starts over unsaved work.
@@ -157,5 +181,37 @@ pub(crate) fn dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
         app.updates.open = false;
         #[cfg(not(target_arch = "wasm32"))]
         app.updates.updater.dismiss_status();
+    }
+}
+
+/// Help ▸ Check for updates in a build that is updated by its own installer.
+fn custom_build_dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
+    if !app.updates.open {
+        return;
+    }
+    let t = theme::Tokens::get(ctx);
+    let version = pdfcraft_engine::build_info::version();
+    let mut close = false;
+    let modal = crate::widgets::show_modal(ctx, "updates", |ui| {
+        ui.set_width(420.0);
+        ui.horizontal(|ui| {
+            ui.add(crate::icons::image("cloud", 22.0, t.accent));
+            ui.label(egui::RichText::new(tl!("Check for updates")).font(theme::semibold(16.0)));
+        });
+        ui.add_space(8.0);
+        ui.label(crate::i18n::fmt(tl!("This is a customised build of PdfCraft ({v})."), &[("v", &version)]));
+        ui.label(
+            egui::RichText::new(tl!("It is updated by the installer it came with. Installing a PdfCraft release over it would remove its changes."))
+                .color(t.text_muted),
+        );
+        ui.add_space(10.0);
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            if widgets::pill_button(ui, tl!("Close"), true).clicked() {
+                close = true;
+            }
+        });
+    });
+    if modal.should_close() || close {
+        app.updates.open = false;
     }
 }

@@ -104,6 +104,22 @@ fn a_refused_request_shows_the_error_in_the_panel() {
 }
 
 #[test]
+fn errors_with_details_are_shown_in_the_interface_language() {
+    // Nothing listens on this port once the listener is dropped: the request fails to connect.
+    let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let mut h = harness(Some(format!("http://127.0.0.1:{port}")), "sk-test");
+    h.state_mut().set_option("language", "fi").unwrap();
+    h.run_steps(2);
+    h.get_by_label("Tee yhteenveto").click();
+    h.run_steps(4);
+    let shown = |h: &Harness<'static, PdfCraftApp>, s: &str| {
+        h.query_all_by(|n| n.label().is_some_and(|l| l.contains(s)) || n.value().is_some_and(|v| v.contains(s))).count()
+    };
+    assert!(shown(&h, "palveluun ei saatu yhteyttä:") > 0, "the network error is in Finnish");
+    assert_eq!(shown(&h, "could not reach"), 0);
+}
+
+#[test]
 fn create_pdf_from_an_office_file_opens_a_new_tab() {
     let dir = std::env::temp_dir().join(format!("pdfcraft-office-ui-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

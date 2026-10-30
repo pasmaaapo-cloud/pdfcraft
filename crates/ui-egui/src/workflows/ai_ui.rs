@@ -262,6 +262,24 @@ fn language_name(code: &str) -> &'static str {
     }
 }
 
+/// An error as the panel shows it, in the interface language. The details a variant carries (the
+/// service's own message, the network error) stay as they came.
+pub(crate) fn error_text(e: &pdfcraft_ai::AiError) -> String {
+    use crate::i18n::fmt;
+    use pdfcraft_ai::AiError;
+    match e {
+        AiError::QuestionTooLong => fmt(tl!("the question is longer than {n} characters"), &[("n", &pdfcraft_ai::MAX_QUESTION_CHARS.to_string())]),
+        AiError::BadEndpoint(u) => fmt(tl!("the endpoint must be an https:// address (or http:// on this computer): {url}"), &[("url", u)]),
+        AiError::Refused { status, message } => {
+            fmt(tl!("the service refused the request ({status}): {message}"), &[("status", &status.to_string()), ("message", message)])
+        }
+        AiError::Network(m) => fmt(tl!("could not reach the service: {error}"), &[("error", m)]),
+        AiError::BadResponse(m) => fmt(tl!("the service's answer could not be read: {error}"), &[("error", m)]),
+        // The rest carry nothing but their message.
+        other => tl!(&other.to_string()).to_string(),
+    }
+}
+
 /// Read the pages' text and ask the model (on the worker thread).
 fn ask(
     source: pdfcraft_engine::export::ExportSource,
@@ -284,7 +302,7 @@ fn ask(
     #[cfg(not(target_arch = "wasm32"))]
     {
         let transport = pdfcraft_ai::HttpTransport::new(concat!("PdfCraft/", env!("CARGO_PKG_VERSION")));
-        pdfcraft_ai::run(settings, &transport, &texts, task).map_err(|e| tl!(&e.to_string()).to_string())
+        pdfcraft_ai::run(settings, &transport, &texts, task).map_err(|e| error_text(&e))
     }
     #[cfg(target_arch = "wasm32")]
     {

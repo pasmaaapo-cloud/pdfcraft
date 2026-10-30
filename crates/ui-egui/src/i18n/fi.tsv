@@ -2874,6 +2874,14 @@ theme	Appearance	Teema
 	the document has no text to read; recognise text (OCR) first if it is scanned	dokumentissa ei ole luettavaa tekstiä; jos se on skannattu, tunnista teksti (OCR) ensin
 	the API key was refused (check it in Preferences ▸ AI Assistant)	API-avain hylättiin (tarkista se kohdassa Asetukset > Tekoälyavustaja)
 	the service is busy or the usage limit was reached; try again in a moment	palvelu on ruuhkainen tai käyttöraja täyttyi; yritä hetken päästä uudelleen
+	the question is empty	kysymys on tyhjä
+	the question is longer than {n} characters	kysymys on yli {n} merkkiä pitkä
+	the endpoint must be an https:// address (or http:// on this computer): {url}	palvelun osoitteen on oltava https://-osoite (tai http:// tällä tietokoneella): {url}
+	the service refused the request ({status}): {message}	palvelu hylkäsi pyynnön ({status}): {message}
+	could not reach the service: {error}	palveluun ei saatu yhteyttä: {error}
+	the service's answer could not be read: {error}	palvelun vastausta ei voitu lukea: {error}
+	This is a customised build of PdfCraft ({v}).	Tämä on PdfCraftin muokattu versio ({v}).
+	It is updated by the installer it came with. Installing a PdfCraft release over it would remove its changes.	Se päivitetään omalla asennusohjelmallaan. PdfCraftin virallisen julkaisun asentaminen sen päälle poistaisi sen muutokset.
 @id	create.office	Luo PDF Office-tiedostosta…
 	Question	Kysymys
 	p. {n}	s. {n}

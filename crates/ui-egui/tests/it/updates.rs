@@ -118,3 +118,33 @@ fn the_check_at_start_offers_the_prompt_and_later_dismisses_it() {
     h.run_steps(3);
     assert!(h.query_by_label_contains("is available").is_none(), "Later closes the prompt");
 }
+
+#[test]
+fn a_customised_build_never_asks_and_says_how_it_is_updated() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counted = calls.clone();
+    let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        let counted = counted.clone();
+        app.set_update_source(Arc::new(move || {
+            counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(Some(release("v99.0.0")))
+        }));
+        app.set_self_update(false);
+        app.set_startup_update_check(true);
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().execute("help.check_updates");
+    h.run_steps(4);
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    h.run_steps(4);
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 0, "no release is looked up");
+    assert!(h.query_by_label_contains("is available").is_none());
+    h.get_by_label_contains("customised build of PdfCraft");
+    // The left panel has a Close button too: the dialog's is the last one drawn.
+    h.get_all_by_label("Close").last().unwrap().click();
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("customised build").is_none(), "Close closes it");
+}
