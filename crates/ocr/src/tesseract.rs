@@ -46,24 +46,48 @@ pub fn tesseract_language(code: &str) -> Option<&'static str> {
     LANGUAGE_CODES.iter().find(|(iso, tess, _)| code.eq_ignore_ascii_case(iso) || code.eq_ignore_ascii_case(tess)).map(|(_, t, _)| *t)
 }
 
-/// A Tesseract program.
+/// A Tesseract program, and the folder of language data to use instead of its own (`None`: its
+/// own `tessdata`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tesseract {
     pub exe: PathBuf,
+    pub tessdata: Option<PathBuf>,
+}
+
+/// Language data PdfCraft brings itself: `$PDFCRAFT_TESSDATA`, else a `tessdata` folder beside
+/// the PdfCraft executable that holds at least one `.traineddata` file. A packaged PdfCraft can
+/// so carry Finnish and Swedish without touching the system Tesseract's own folder.
+pub fn tessdata_dir() -> Option<PathBuf> {
+    let has_data =
+        |d: &Path| std::fs::read_dir(d).is_ok_and(|mut it| it.any(|e| e.is_ok_and(|e| e.path().extension().is_some_and(|x| x == "traineddata"))));
+    if let Some(d) = std::env::var_os("PDFCRAFT_TESSDATA").map(PathBuf::from) {
+        return has_data(&d).then_some(d);
+    }
+    let beside = std::env::current_exe().ok()?.parent()?.join("tessdata");
+    has_data(&beside).then_some(beside)
 }
 
 impl Tesseract {
     /// The first Tesseract found: `$PDFCRAFT_TESSERACT`, then `tesseract` on the `PATH`, then
     /// the usual install locations.
     pub fn find() -> Option<Tesseract> {
-        candidates().into_iter().find(|p| p.is_file()).map(|exe| Tesseract { exe })
+        candidates().into_iter().find(|p| p.is_file()).map(|exe| Tesseract { exe, tessdata: tessdata_dir() })
+    }
+
+    /// The program, pointed at PdfCraft's own language data when there is some.
+    fn command(&self) -> Command {
+        let mut cmd = Command::new(&self.exe);
+        if let Some(dir) = &self.tessdata {
+            cmd.arg("--tessdata-dir").arg(dir);
+        }
+        cmd
     }
 
     /// The languages this installation can read (Tesseract codes such as `fin`), sorted.
     pub fn languages(&self) -> Result<Vec<String>, OcrError> {
         let dir = Scratch::new()?;
         let out = dir.path().join("langs.txt");
-        let mut cmd = Command::new(&self.exe);
+        let mut cmd = self.command();
         cmd.arg("--list-langs");
         run(&mut cmd, Some(&out), LIST_LIMIT)?;
         let text = read_capped(&out)?;
@@ -96,7 +120,7 @@ impl Tesseract {
         let image = dir.path().join("page.ppm");
         std::fs::File::create(&image).and_then(|mut f| f.write_all(&ppm)).map_err(io_err)?;
         let base = dir.path().join("words");
-        let mut cmd = Command::new(&self.exe);
+        let mut cmd = self.command();
         // --psm 3: automatic page segmentation (Tesseract's default), stated so a user config
         // file cannot change it. One thread: pages are already recognised one at a time.
         cmd.arg(&image).arg(&base).args(["-l", &langs.join("+"), "--psm", "3", "tsv"]).env("OMP_THREAD_LIMIT", "1");
@@ -302,6 +326,26 @@ garbage\n";
         assert!(to_ppm(&[1], u32::MAX, u32::MAX).is_err());
     }
 
+    /// A language folder of PdfCraft's own replaces the installation's: a real Tesseract lists
+    /// what is in it. Skipped without Tesseract.
+    #[test]
+    fn own_language_data_is_used_when_given() {
+        let Some(mut t) = Tesseract::find() else { return };
+        let Ok(system) = t.languages() else { return };
+        let Some(lang) = system.first().cloned() else { return };
+        let Some(src) = ["/usr/share/tesseract-ocr/5/tessdata", "/usr/share/tesseract-ocr/4.00/tessdata", "/opt/homebrew/share/tessdata"]
+            .iter()
+            .map(|d| Path::new(d).join(format!("{lang}.traineddata")))
+            .find(|p| p.is_file())
+        else {
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::copy(&src, dir.path().join("only.traineddata")).unwrap();
+        t.tessdata = Some(dir.path().to_path_buf());
+        assert_eq!(t.languages().unwrap(), ["only"]);
+    }
+
     #[test]
     fn languages_are_named_by_iso_or_tesseract_codes() {
         assert_eq!(tesseract_language("fi"), Some("fin"));
@@ -311,7 +355,7 @@ garbage\n";
 
     #[test]
     fn bad_language_lists_are_refused_before_running() {
-        let t = Tesseract { exe: PathBuf::from("/nonexistent/tesseract") };
+        let t = Tesseract { exe: PathBuf::from("/nonexistent/tesseract"), tessdata: None };
         let px = [255u8; 4];
         for langs in [vec![], vec!["fin; rm -rf".to_string()], vec!["eng".to_string(); MAX_LANGUAGES + 1]] {
             assert!(matches!(t.recognize(&px, 1, 1, &langs), Err(OcrError::Recognize(m)) if m.contains("languages")), "{langs:?}");

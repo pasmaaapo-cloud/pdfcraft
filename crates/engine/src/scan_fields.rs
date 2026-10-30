@@ -119,7 +119,8 @@ impl Session {
 
     /// The words text recognition reads on `page`, in the frame; none without the models.
     fn recognized_words(&self, id: DocId, page: usize, frame: &Frame) -> Vec<Word> {
-        if !ocr::available() {
+        // The bundled models only: the detector's reading of labels is tuned to them.
+        if ocr::Models::find().is_none() {
             return Vec::new();
         }
         let (Ok(engine), Some(job)) = (ocr::engine(), self.ocr_job(id, &[page], ocr::OcrSettings::default())) else {

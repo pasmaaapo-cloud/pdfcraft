@@ -5340,7 +5340,7 @@ fn detecting_fields_on_a_scanned_form() {
             assert!(r.iter().zip(w).zip(tol).all(|((a, b), t)| (a - b).abs() <= t), "{scan:?}: {r:?}, want {w:?}");
         }
         let names: Vec<&str> = found.iter().map(|(_, c)| c.name.as_str()).collect();
-        if ocr::available() {
+        if ocr::Models::find().is_some() {
             // (Askew, recognition may read "Haupt" and "Zweig" as one phrase.)
             assert!(names.contains(&"Name") && names.contains(&"Telefon") && names.iter().any(|n| n.starts_with("Haupt")), "{scan:?}: {names:?}");
         } else {

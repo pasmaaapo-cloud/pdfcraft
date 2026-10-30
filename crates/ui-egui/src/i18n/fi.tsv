@@ -2870,9 +2870,9 @@ theme	Appearance	Teema
 	Converting {name}…	Muunnetaan {name}…
 	Office file	Office-tiedosto
 	converting Office files needs LibreOffice, which is not installed (install it, or set PDFCRAFT_SOFFICE to soffice's path)	Office-tiedostojen muuntaminen vaatii LibreOfficen, jota ei ole asennettu (asenna se tai anna soffice-ohjelman polku muuttujassa PDFCRAFT_SOFFICE)
-	the AI Assistant is not set up: add your Anthropic API key in Preferences ▸ AI Assistant (or set ANTHROPIC_API_KEY)	tekoälyavustajaa ei ole otettu käyttöön: lisää Anthropic-API-avaimesi kohdassa Asetukset ▸ Tekoälyavustaja (tai aseta ANTHROPIC_API_KEY)
+	the AI Assistant is not set up: add your Anthropic API key in Preferences ▸ AI Assistant (or set ANTHROPIC_API_KEY)	tekoälyavustajaa ei ole otettu käyttöön: lisää Anthropic-API-avaimesi kohdassa Asetukset > Tekoälyavustaja (tai aseta ANTHROPIC_API_KEY)
 	the document has no text to read; recognise text (OCR) first if it is scanned	dokumentissa ei ole luettavaa tekstiä; jos se on skannattu, tunnista teksti (OCR) ensin
-	the API key was refused (check it in Preferences ▸ AI Assistant)	API-avain hylättiin (tarkista se kohdassa Asetukset ▸ Tekoälyavustaja)
+	the API key was refused (check it in Preferences ▸ AI Assistant)	API-avain hylättiin (tarkista se kohdassa Asetukset > Tekoälyavustaja)
 	the service is busy or the usage limit was reached; try again in a moment	palvelu on ruuhkainen tai käyttöraja täyttyi; yritä hetken päästä uudelleen
 @id	create.office	Luo PDF Office-tiedostosta…
 	Question	Kysymys
