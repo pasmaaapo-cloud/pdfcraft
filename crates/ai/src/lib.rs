@@ -105,11 +105,21 @@ impl Settings {
     /// for a local proxy or model server).
     pub fn messages_url(&self) -> Result<String, AiError> {
         let base = self.endpoint.trim().trim_end_matches('/');
-        let local = ["http://localhost", "http://127.0.0.1", "http://[::1]"]
-            .iter()
-            .any(|p| base.strip_prefix(p).is_some_and(|rest| rest.is_empty() || rest.starts_with(':') || rest.starts_with('/')));
-        if !(base.starts_with("https://") && base.len() > "https://".len() || local) || base.chars().any(char::is_whitespace) {
-            return Err(AiError::BadEndpoint(base.to_string()));
+        let bad = || AiError::BadEndpoint(base.to_string());
+        // The authority is everything up to the first slash. One with a user part
+        // ("http://localhost:1@example.com") names another host than it seems to, so none may.
+        let (scheme, rest) = base.split_once("://").ok_or_else(bad)?;
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+        if authority.is_empty() || authority.contains('@') || base.chars().any(|c| c.is_whitespace() || c.is_control()) {
+            return Err(bad());
+        }
+        let local = ["localhost", "127.0.0.1", "[::1]"].iter().any(|host| {
+            authority
+                .strip_prefix(host)
+                .is_some_and(|port| port.is_empty() || port.strip_prefix(':').is_some_and(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit())))
+        });
+        if !(scheme == "https" || scheme == "http" && local) {
+            return Err(bad());
         }
         Ok(format!("{base}/v1/messages"))
     }

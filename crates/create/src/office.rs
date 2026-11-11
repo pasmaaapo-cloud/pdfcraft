@@ -95,6 +95,13 @@ pub fn office_to_pdf(soffice: &Path, input: &Path, limit: Duration) -> Result<Ve
     let profile = scratch.0.join("profile");
     std::fs::create_dir(&out_dir).map_err(|e| invalid(e.to_string()))?;
     let mut cmd = Command::new(soffice);
+    // CREATE_NO_WINDOW: `soffice.com` is a console program, which would flash a console window
+    // when started from the windowed app on Windows.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        cmd.creation_flags(0x0800_0000);
+    }
     cmd.arg(format!("-env:UserInstallation={}", file_url(&profile)))
         .args(["--headless", "--invisible", "--nodefault", "--nolockcheck", "--nologo", "--norestore", "--convert-to", "pdf", "--outdir"])
         .arg(&out_dir)

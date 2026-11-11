@@ -54,7 +54,22 @@ fn endpoints_must_be_https_or_this_computer() {
     assert_eq!(url("https://api.anthropic.com/").unwrap(), "https://api.anthropic.com/v1/messages");
     assert_eq!(url("http://localhost:8080").unwrap(), "http://localhost:8080/v1/messages");
     assert_eq!(url("http://127.0.0.1").unwrap(), "http://127.0.0.1/v1/messages");
-    for bad in ["http://example.com", "http://localhost.example.com", "ftp://x", "https://", "", "https://a b"] {
+    assert_eq!(url("http://[::1]:8080/proxy").unwrap(), "http://[::1]:8080/proxy/v1/messages");
+    for bad in [
+        "http://example.com",
+        "http://localhost.example.com",
+        "ftp://x",
+        "https://",
+        "",
+        "https://a b",
+        // A user part makes the real host the one after the @.
+        "http://localhost:8080@example.com",
+        "http://localhost@example.com/",
+        "http://127.0.0.1:x",
+        "http://localhost:",
+        "https://user@example.com",
+        "localhost:8080",
+    ] {
         assert!(matches!(url(bad), Err(AiError::BadEndpoint(_))), "{bad:?}");
     }
 }

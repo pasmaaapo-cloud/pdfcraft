@@ -123,23 +123,40 @@ pub fn recognizer(settings: &OcrSettings) -> Result<Arc<dyn Recognize + Send + S
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use pdfcraft_ocr::tesseract::{TesseractRun, tesseract_language};
+        use pdfcraft_ocr::tesseract::tesseract_language;
         let Some(tesseract) = tesseract() else {
             return Err(if lang == "en" { OcrError::NoModels.to_string() } else { NEED_TESSERACT.to_string() });
         };
         let code = tesseract_language(lang).ok_or_else(|| format!("unsupported language {lang:?}"))?;
-        let installed = tesseract.languages().map_err(|e| e.to_string())?;
-        if !installed.iter().any(|l| l == code) {
-            return Err(NEED_LANGUAGE_DATA.to_string());
-        }
-        let mut languages = vec![code.to_string()];
-        if code != "eng" && installed.iter().any(|l| l == "eng") {
-            languages.push("eng".to_string());
-        }
-        Ok(Arc::new(TesseractRun { tesseract, languages }))
+        Ok(Arc::new(tesseract_run(tesseract, code)?))
     }
     #[cfg(target_arch = "wasm32")]
     Err(OcrError::NoModels.to_string())
+}
+
+/// `tesseract` set to read the Tesseract language `code`, together with English when its data
+/// is there too.
+#[cfg(not(target_arch = "wasm32"))]
+fn tesseract_run(mut tesseract: pdfcraft_ocr::tesseract::Tesseract, code: &str) -> Result<pdfcraft_ocr::tesseract::TesseractRun, String> {
+    let mut installed = tesseract.languages().map_err(|e| e.to_string())?;
+    // PdfCraft's own language folder replaces the installation's, so a language only the
+    // installation has (German, say, beside our Finnish and Swedish) is read from there.
+    if !installed.iter().any(|l| l == code) && tesseract.tessdata.is_some() {
+        let system = pdfcraft_ocr::tesseract::Tesseract { exe: tesseract.exe.clone(), tessdata: None };
+        if let Ok(langs) = system.languages()
+            && langs.iter().any(|l| l == code)
+        {
+            (tesseract, installed) = (system, langs);
+        }
+    }
+    if !installed.iter().any(|l| l == code) {
+        return Err(NEED_LANGUAGE_DATA.to_string());
+    }
+    let mut languages = vec![code.to_string()];
+    if code != "eng" && installed.iter().any(|l| l == "eng") {
+        languages.push("eng".to_string());
+    }
+    Ok(pdfcraft_ocr::tesseract::TesseractRun { tesseract, languages })
 }
 
 /// Everything recognition needs from a document, detached from the session.
@@ -328,6 +345,37 @@ mod tests {
         assert!(covered([131.0, 52.0, 170.0, 61.0], &glyphs) < ALREADY_ON_PAGE);
         // A page without text has nothing to cover a word.
         assert_eq!(covered([100.5, 52.0, 134.0, 61.0], &[]), 0.0);
+    }
+
+    /// PdfCraft's own language folder must not hide the languages only the installed Tesseract
+    /// has. Skipped without a Tesseract that has two languages.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_language_missing_from_our_own_data_is_read_from_the_installation() {
+        use pdfcraft_ocr::tesseract::Tesseract;
+        let Some(found) = Tesseract::find() else { return };
+        let system = Tesseract { exe: found.exe, tessdata: None };
+        let Ok(langs) = system.languages() else { return };
+        let Some(other) = langs.iter().find(|l| *l != "eng").cloned() else { return };
+        let Some(eng) = ["/usr/share/tesseract-ocr/5/tessdata", "/usr/share/tesseract-ocr/4.00/tessdata", "/opt/homebrew/share/tessdata"]
+            .iter()
+            .map(|d| std::path::Path::new(d).join("eng.traineddata"))
+            .find(|p| p.is_file())
+        else {
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::copy(&eng, dir.path().join("eng.traineddata")).unwrap();
+        let ours = Tesseract { exe: system.exe.clone(), tessdata: Some(dir.path().to_path_buf()) };
+        // A language in our folder is read from our folder.
+        let run = tesseract_run(ours.clone(), "eng").unwrap();
+        assert_eq!((run.tesseract.tessdata.as_deref(), run.languages), (Some(dir.path()), vec!["eng".to_string()]));
+        // One that is only in the installation is read from there.
+        let run = tesseract_run(ours.clone(), &other).unwrap();
+        assert_eq!(run.tesseract.tessdata, None);
+        assert_eq!(run.languages.first(), Some(&other));
+        // One nobody has is still refused.
+        assert_eq!(tesseract_run(ours, "zzz").unwrap_err(), NEED_LANGUAGE_DATA);
     }
 
     /// #1848: an A4 scan at 300 dpi whose page box is its pixel size (2480 x 3508 pt, one pixel

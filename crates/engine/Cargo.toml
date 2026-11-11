@@ -54,3 +54,4 @@ chrono = { workspace = true, features = ["clock"] }
 
 [dev-dependencies]
 pdfcraft-testkit = { workspace = true }
+tempfile = "3.27"

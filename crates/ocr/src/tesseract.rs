@@ -77,6 +77,7 @@ impl Tesseract {
     /// The program, pointed at PdfCraft's own language data when there is some.
     fn command(&self) -> Command {
         let mut cmd = Command::new(&self.exe);
+        no_console(&mut cmd);
         if let Some(dir) = &self.tessdata {
             cmd.arg("--tessdata-dir").arg(dir);
         }
@@ -141,6 +142,18 @@ impl Recognize for TesseractRun {
     fn recognize(&self, pixels: &[u8], width: u32, height: u32) -> Result<Vec<Line>, OcrError> {
         self.tesseract.recognize(pixels, width, height, &self.languages)
     }
+}
+
+/// Tesseract is a console program: started from the windowed app on Windows it would flash a
+/// console window for every page. CREATE_NO_WINDOW starts it without one.
+fn no_console(cmd: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        cmd.creation_flags(0x0800_0000);
+    }
+    #[cfg(not(windows))]
+    let _ = cmd;
 }
 
 /// Where Tesseract may be, in the order [`Tesseract::find`] tries them.
