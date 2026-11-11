@@ -124,7 +124,9 @@ impl Tesseract {
         let mut cmd = self.command();
         // --psm 3: automatic page segmentation (Tesseract's default), stated so a user config
         // file cannot change it. One thread: pages are already recognised one at a time.
-        cmd.arg(&image).arg(&base).args(["-l", &langs.join("+"), "--psm", "3", "tsv"]).env("OMP_THREAD_LIMIT", "1");
+        // The TSV output is asked for as a variable, not by the `tsv` config file's name: config
+        // files live in the language folder, and a folder of our own has only language data.
+        cmd.arg(&image).arg(&base).args(["-l", &langs.join("+"), "--psm", "3", "-c", "tessedit_create_tsv=1"]).env("OMP_THREAD_LIMIT", "1");
         run(&mut cmd, None, PAGE_LIMIT)?;
         let tsv = read_capped(&base.with_extension("tsv"))?;
         Ok(parse_tsv(&tsv))
@@ -357,6 +359,27 @@ garbage\n";
         std::fs::copy(&src, dir.path().join("only.traineddata")).unwrap();
         t.tessdata = Some(dir.path().to_path_buf());
         assert_eq!(t.languages().unwrap(), ["only"]);
+    }
+
+    /// A language folder with nothing but language data (no `configs/tsv`) still gives words:
+    /// this is how a packaged PdfCraft carries Finnish. Skipped without Tesseract.
+    #[test]
+    fn a_folder_of_language_data_alone_is_enough_to_read_a_page() {
+        let Some(mut t) = Tesseract::find() else { return };
+        let Some(src) = ["/usr/share/tesseract-ocr/5/tessdata", "/usr/share/tesseract-ocr/4.00/tessdata", "/opt/homebrew/share/tessdata"]
+            .iter()
+            .map(|d| Path::new(d).join("eng.traineddata"))
+            .find(|p| p.is_file())
+        else {
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::copy(&src, dir.path().join("eng.traineddata")).unwrap();
+        t.tessdata = Some(dir.path().to_path_buf());
+        // A white page: no words, but Tesseract must have written its TSV for this to be Ok.
+        let (w, h) = (200u32, 80u32);
+        let white = vec![255u8; (w * h) as usize];
+        assert_eq!(t.recognize(&white, w, h, &["eng".to_string()]).map(|l| l.len()).map_err(|e| e.to_string()), Ok(0));
     }
 
     #[test]
